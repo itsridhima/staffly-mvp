@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import AssistantChat from "@/components/AssistantChat";
 import BillPanel from "@/components/BillPanel";
 import Confirmation from "@/components/Confirmation";
 import PaymentPage, { type PayMethod } from "@/components/PaymentPage";
@@ -236,6 +237,7 @@ export default function Home() {
 
         {step === "confirmed" && booking && <Confirmation booking={booking} onReset={resetAll} />}
       </main>
+      <AssistantChat step={step} length={length} date={date} order={order} />
     </>
   );
 }
