@@ -17,7 +17,7 @@ function when(iso: string): string {
   return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
 }
 
-/** Payment history and bills. All payments in this prototype are simulated. */
+/** Bills for each booking. Online payment isn't switched on yet, so nothing has been charged. */
 export default function PaymentsView({ bookings, onOpenBooking, onBookNow, onBack }: Props) {
   const { count, total } = paymentsSummary(bookings);
   const itemTotal = bookings.reduce((s, b) => s + b.bill.itemTotal, 0);
@@ -25,10 +25,10 @@ export default function PaymentsView({ bookings, onOpenBooking, onBookNow, onBac
 
   return (
     <section className="space-y-4">
-      <SubPageHeader title="Payments" subtitle="Your bills and payment history" onBack={onBack} />
+      <SubPageHeader title="Payments" subtitle="Your bills for each booking" onBack={onBack} />
 
       <div className="glass-dark p-5">
-        <p className="text-sm text-sky-200">Total paid (simulated)</p>
+        <p className="text-sm text-sky-200">Total billed</p>
         <p className="text-4xl font-black">{formatINR(total)}</p>
         <div className="mt-3 grid grid-cols-2 gap-3 text-sm">
           <div className="rounded-2xl bg-white/10 p-3">
@@ -36,16 +36,18 @@ export default function PaymentsView({ bookings, onOpenBooking, onBookNow, onBac
             <p className="font-bold">{formatINR(itemTotal)}</p>
           </div>
           <div className="rounded-2xl bg-white/10 p-3">
-            <p className="text-sky-200">GST (placeholder rate)</p>
+            <p className="text-sky-200">GST</p>
             <p className="font-bold">{formatINR(gst)}</p>
           </div>
         </div>
-        <p className="mt-3 text-xs text-sky-200">Prototype: no real money moved. {count} {count === 1 ? "payment" : "payments"}.</p>
+        <p className="mt-3 text-xs text-sky-200">
+          {count} {count === 1 ? "booking" : "bookings"}. Online payment isn&apos;t switched on yet, so nothing has been charged.
+        </p>
       </div>
 
       <h2 className="text-lg font-black">Transactions</h2>
       {bookings.length === 0 ? (
-        <EmptyState title="No transactions yet" body="Payments appear here after you confirm a booking." actionLabel="Book now" onAction={onBookNow} />
+        <EmptyState title="No transactions yet" body="Your bills appear here after you confirm a booking." actionLabel="Book now" onAction={onBookNow} />
       ) : (
         <ul className="space-y-3">
           {newestFirst(bookings).map((b) => (
@@ -57,8 +59,8 @@ export default function PaymentsView({ bookings, onOpenBooking, onBookNow, onBac
                     <div className="muted text-xs">{when(b.createdAt)}</div>
                   </div>
                   <div className="text-right">
-                    <div className="text-lg font-black">−{formatINR(b.bill.grandTotal)}</div>
-                    <div className="text-xs font-semibold text-emerald-700">Paid (simulated)</div>
+                    <div className="text-lg font-black">{formatINR(b.bill.grandTotal)}</div>
+                    <div className="text-xs font-semibold text-emerald-700">Booked</div>
                   </div>
                 </div>
                 <p className="text-sm">{bookingSummary(b)}</p>

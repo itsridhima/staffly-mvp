@@ -21,7 +21,7 @@ export default function Confirmation({ booking, saveError, onViewBookings, onRes
           {booking.reference}
         </p>
         <p className="mt-2 text-sm text-sky-100">
-          Prototype booking: no real payment was taken and no real worker has been notified. Track each worker under Profile → My bookings.
+          Your booking is confirmed. Track each worker under Profile → My bookings. Online payment isn&apos;t switched on yet, so nothing has been charged.
         </p>
       </div>
 

@@ -10,7 +10,7 @@ import TrackingTimeline from "./TrackingTimeline";
 import WorkerCard from "./WorkerCard";
 
 const ACTION_LABEL: Record<TrackingAction, string> = {
-  call: "Run Staffly confirmation call (1 hour before shift)",
+  call: "Staffly confirmation call (1 hour before shift)",
   confirm: "Worker confirms they're coming",
   cannot_come: "Worker can't come / doesn't answer",
   arrive: "Worker arrives and starts",
@@ -23,9 +23,11 @@ interface Props {
   onBack: () => void;
   onAction: (trackingId: string, action: TrackingAction) => void;
   onRate: (trackingId: string, stars: number, note: string) => void;
+  /** Developer tools (?dev=1): buttons that move a worker through the tracking steps for testing */
+  devTools?: boolean;
 }
 
-export default function BookingDetail({ booking, notice, onBack, onAction, onRate }: Props) {
+export default function BookingDetail({ booking, notice, onBack, onAction, onRate, devTools = false }: Props) {
   return (
     <div className="space-y-5">
       <button type="button" onClick={onBack} className="btn-ghost px-4 py-2 text-sm">
@@ -35,7 +37,7 @@ export default function BookingDetail({ booking, notice, onBack, onAction, onRat
       <section className="glass-dark p-5">
         <p className="text-sm text-sky-200">Booking reference</p>
         <p className="font-mono text-2xl font-black">{booking.reference}</p>
-        <p className="mt-1 text-xs text-sky-200">Prototype booking. Tracking updates below are simulated.</p>
+        <p className="mt-1 text-xs text-sky-200">Each worker has a tracking ID. Updates appear below as your shift gets closer.</p>
       </section>
 
       {notice && (
@@ -74,10 +76,10 @@ export default function BookingDetail({ booking, notice, onBack, onAction, onRat
                     <TrackingTimeline tracked={tw} />
                     <RatingForm tracked={tw} onSubmit={(stars, note) => onRate(tw.trackingId, stars, note)} />
 
-                    {actions.length > 0 && (
+                    {devTools && actions.length > 0 && (
                       <div className="mt-3 rounded-2xl border border-dashed border-amber-400 bg-amber-50/80 p-3">
                         <p className="mb-2 text-xs font-semibold text-amber-900">
-                          Demo controls (prototype only): in real life Staffly would phone the worker and the worker would reply.
+                          Developer tools: move this worker to the next tracking step for testing.
                         </p>
                         <div className="flex flex-wrap gap-2">
                           {actions.map((a) => (

@@ -3,8 +3,8 @@ import AuthProvider from "@/components/AuthProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Staffly – Book shift staff (prototype)",
-  description: "Prototype: book pre-onboarded frontline staff for a shift. Demo data only.",
+  title: "Staffly – Book shift staff",
+  description: "Book pre-onboarded frontline staff for your café, restaurant or hotel shift in one simple flow.",
 };
 
 export const viewport: Viewport = {

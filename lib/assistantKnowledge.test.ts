@@ -2,13 +2,13 @@ import { describe, expect, it } from "vitest";
 import { buildSystemPrompt, sanitizeContext } from "./assistantKnowledge";
 
 describe("assistant knowledge", () => {
-  it("includes every role price and the prototype/GST caveats", () => {
+  it("includes every role price, the payment status and the honesty rules", () => {
     const prompt = buildSystemPrompt(sanitizeContext({}));
     expect(prompt).toContain("₹690");
     expect(prompt).toContain("₹1,020");
     expect(prompt).toContain("₹940");
-    expect(prompt).toMatch(/PROTOTYPE/);
-    expect(prompt).toMatch(/PLACEHOLDER/);
+    expect(prompt).toMatch(/Online payment isn't switched on/);
+    expect(prompt).toMatch(/sample profiles/);
     expect(prompt).toMatch(/never guess/i);
   });
 

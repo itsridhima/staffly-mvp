@@ -44,7 +44,7 @@ const ICONS = {
 export default function ProfileView({ profile, accountName, avatarUrl, bookings, loading, error, onOpen, onLogin }: Props) {
   const { configured, user, ready, signOut } = useAuth();
   const name = profile.name || accountName || "Your profile";
-  const contact = user?.email ?? user?.phone ?? (configured ? "Not signed in" : "Guest (demo): login isn't set up on this copy");
+  const contact = user?.email ?? user?.phone ?? (configured ? "Not signed in" : "Guest · saved on this device only");
   const pay = paymentsSummary(bookings);
   const venue = selectedVenue(profile);
   const needsLogin = configured && ready && !user;
@@ -59,7 +59,7 @@ export default function ProfileView({ profile, accountName, avatarUrl, bookings,
     {
       target: "payments",
       title: "Payments",
-      sub: pay.count ? `${pay.count} · ${formatINR(pay.total)} (simulated)` : "No payments yet",
+      sub: pay.count ? `${pay.count} ${pay.count === 1 ? "bill" : "bills"} · ${formatINR(pay.total)}` : "No bills yet",
       icon: ICONS.payments,
     },
     { target: "crew", title: "Your crew", sub: profile.favourites.length ? `${profile.favourites.length} favourite${profile.favourites.length === 1 ? "" : "s"}` : "Add favourite workers", icon: ICONS.crew },
@@ -169,7 +169,7 @@ export default function ProfileView({ profile, accountName, avatarUrl, bookings,
           {error}
         </p>
       )}
-      <p className="muted pb-2 text-center text-xs">Staffly prototype · version {APP_VERSION}</p>
+      <p className="muted pb-2 text-center text-xs">Staffly · version {APP_VERSION}</p>
     </div>
   );
 }

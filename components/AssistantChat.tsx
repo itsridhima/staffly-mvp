@@ -84,7 +84,7 @@ export default function AssistantChat({ view, lines }: Props) {
       <header className="glass-dark flex items-center justify-between rounded-none px-4 py-3">
         <div>
           <div className="font-bold">Staffly assistant</div>
-          <div className="text-xs text-sky-200">AI helper · prototype · can&apos;t book for you</div>
+          <div className="text-xs text-sky-200">Ask about booking, prices and tracking</div>
         </div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="px-2 text-xl">
           ×
@@ -112,7 +112,7 @@ export default function AssistantChat({ view, lines }: Props) {
             }`}
           >
             {m.content}
-            {m.source === "faq" && <div className="muted mt-1 text-xs">Quick answer (AI helper not available)</div>}
+            {m.source === "faq" && <div className="muted mt-1 text-xs">Quick answer</div>}
           </div>
         ))}
         {busy && <div className="neu-inset muted w-fit px-3 py-2">Thinking…</div>}

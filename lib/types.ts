@@ -8,7 +8,6 @@ export type RoleId =
 
 export type ShiftLength = 5 | 8;
 
-/** PROTOTYPE DATA: every worker is fictional. */
 export interface Worker {
   id: string;
   name: string;
@@ -16,8 +15,6 @@ export interface Worker {
   yearsExperience: number;
   languages: string[];
   skills: string[];
-  /** Obviously fake number, shown as "Demo contact". */
-  contact: string;
   /** Working window each day, in hours (24h clock). */
   workStartHour: number;
   workEndHour: number;
@@ -45,7 +42,7 @@ export interface LedgerEntry {
   date: string;
   startMinutes: number;
   endMinutes: number;
-  /** "demo" = created by the "simulate another manager" tool */
+  /** "demo" = added by the developer tool that books workers out as another business */
   source: "booking" | "demo";
   trackingId?: string;
 }
@@ -116,6 +113,6 @@ export interface Booking {
   workers: TrackedWorker[];
   bill: Bill;
   venue?: BookingVenue;
-  /** How the (simulated) payment was made */
+  /** The payment method chosen at checkout */
   paymentMethod?: "upi" | "card" | "netbanking";
 }

@@ -19,7 +19,8 @@ interface Props {
   onMethod: (m: PayMethod) => void;
   onPay: () => void;
   onBack: () => void;
-  onDemoTake: () => void;
+  /** Only passed when developer tools are on */
+  onDemoTake?: () => void;
 }
 
 export default function PaymentPage({ lines, method, onMethod, onPay, onBack, onDemoTake }: Props) {
@@ -39,9 +40,7 @@ export default function PaymentPage({ lines, method, onMethod, onPay, onBack, on
             </label>
           ))}
         </div>
-        <p className="muted mt-3 text-xs">
-          Prototype: no real money moves and no card or UPI details are collected. You&apos;ll see a simulated bank page next.
-        </p>
+        <p className="muted mt-3 text-xs">Online payment isn&apos;t switched on yet, so you won&apos;t be charged when you confirm.</p>
       </fieldset>
 
       <div className="flex gap-2">
@@ -52,7 +51,7 @@ export default function PaymentPage({ lines, method, onMethod, onPay, onBack, on
           Pay {formatINR(bill.grandTotal)}
         </button>
       </div>
-      <DemoTakeSlotButton onClick={onDemoTake} />
+      {onDemoTake && <DemoTakeSlotButton onClick={onDemoTake} />}
     </section>
   );
 }

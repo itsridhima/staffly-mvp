@@ -61,7 +61,7 @@ describe("Test 1: slots and prices", () => {
 
     const waiters = getSlots({ role: "waiter", qty: 1, length: 5, date: MONDAY }, noon, [], NOW);
     expect(waiters.map((s) => s.available)).toEqual([true, true, true, false]);
-    expect(waiters[3].reason).toMatch(/Already booked/);
+    expect(waiters[3].reason).toMatch(/Fully booked/);
   });
 
   it("marks times that have already passed as unavailable", () => {

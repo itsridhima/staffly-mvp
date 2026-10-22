@@ -44,7 +44,7 @@ export default function BillPanel({ lines, withGst = false, title = "Your bookin
           {withGst && (
             <>
               <div className="flex justify-between">
-                <dt>GST ({Math.round(GST_RATE * 100)}%, placeholder rate)</dt>
+                <dt>GST ({Math.round(GST_RATE * 100)}%)</dt>
                 <dd>{formatINR(bill.gst)}</dd>
               </div>
               <div className={`flex justify-between border-t pt-3 text-lg font-bold ${dark ? "border-white/20" : "border-slate-300"}`}>

@@ -179,7 +179,7 @@ export function roleLabelOf(role: RoleId): string {
 export function buildDataExport(profile: ProfileData, bookings: Booking[], account: { email?: string | null; phone?: string | null }) {
   return {
     exportedAt: new Date().toISOString(),
-    note: "Staffly prototype data export. Workers, contact numbers and payments in this prototype are simulated.",
+    note: "Your Staffly data: profile and bookings.",
     account: { email: account.email ?? null, phone: account.phone ?? null },
     profile,
     bookings,

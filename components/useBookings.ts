@@ -24,7 +24,7 @@ function mergeByReference(primary: Booking[], extra: Booking[]): Booking[] {
  * Saved bookings.
  * - Signed in (Supabase): stored in the user's own rows of the `bookings` table. If a save fails
  *   (for example the table hasn't been created yet) the booking is kept on this device and synced later.
- * - Supabase not set up: saved in this browser only ("guest" mode) so the prototype still works.
+ * - Supabase not set up: saved in this browser only ("guest" mode) so the app still works.
  * - Supabase set up but nobody signed in: nothing to show.
  */
 export function useBookings(user: User | null, authReady: boolean) {

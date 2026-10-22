@@ -4,7 +4,7 @@ import { faqAnswer } from "./faq";
 
 const empty = sanitizeContext({});
 
-describe("scripted FAQ fallback", () => {
+describe("scripted quick answers", () => {
   it("quotes the right price for a role", () => {
     const answer = faqAnswer("How much does a cleaner cost?", empty);
     expect(answer).toContain("₹640");
@@ -17,16 +17,26 @@ describe("scripted FAQ fallback", () => {
     expect(answer).toContain("₹1,020");
   });
 
-  it("says GST is a placeholder", () => {
-    expect(faqAnswer("is gst included?", empty)).toMatch(/placeholder/);
+  it("explains GST", () => {
+    expect(faqAnswer("is gst included?", empty)).toMatch(/18%/);
   });
 
-  it("is honest that the prototype is not real", () => {
-    expect(faqAnswer("are these payments real?", empty)).toMatch(/prototype/i);
+  it("is honest that online payment isn't switched on", () => {
+    expect(faqAnswer("are these payments real?", empty)).toMatch(/isn't switched on/);
+  });
+
+  it("is honest about the worker profiles when asked", () => {
+    expect(faqAnswer("are the workers real people?", empty)).toMatch(/sample profiles/);
+  });
+
+  it("answers refund and cancellation questions from the policy", () => {
+    const answer = faqAnswer("what is your refund policy?", empty);
+    expect(answer).toMatch(/refunded in full/);
+    expect(answer).toMatch(/Help & Support/);
   });
 
   it("does not guess about things it was never told", () => {
-    for (const q of ["what is your refund policy?", "do you serve Pune?", "are workers background verified?"]) {
+    for (const q of ["do you serve Pune?", "are workers background verified?"]) {
       expect(faqAnswer(q, empty)).toMatch(/don't have that information/);
     }
   });

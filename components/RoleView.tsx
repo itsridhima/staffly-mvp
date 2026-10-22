@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import { formatINR } from "@/lib/pricing";
-import { roleInfo, sampleRating } from "@/lib/prototypeData";
-import type { BookingLine, Ledger, LineSpec, RoleId } from "@/lib/types";
+import { roleInfo } from "@/lib/prototypeData";
+import { averageStars, reviewsForRole } from "@/lib/reviews";
+import type { Booking, BookingLine, Ledger, LineSpec, RoleId } from "@/lib/types";
 import RoleBook from "./RoleBook";
 import RoleIcon from "./RoleIcon";
 
@@ -14,6 +15,8 @@ interface Props {
   today: string;
   cart: BookingLine[];
   ledger: Ledger;
+  /** Used to show the employer's own ratings for this role */
+  bookings: Booking[];
   onBack: () => void;
   onAdd: (spec: LineSpec) => void;
 }
@@ -27,9 +30,11 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default function RoleView({ role, today, cart, ledger, onBack, onAdd }: Props) {
+export default function RoleView({ role, today, cart, ledger, bookings, onBack, onAdd }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const info = roleInfo(role);
+  const reviews = reviewsForRole(bookings, role);
+  const average = averageStars(reviews);
   const TABS: { id: Tab; label: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "reviews", label: "Reviews" },
@@ -52,9 +57,7 @@ export default function RoleView({ role, today, cart, ledger, onBack, onAdd }: P
           </span>
           <div>
             <h1 className="text-2xl font-black leading-tight">{info.label}</h1>
-            <p className="mt-1 text-sm text-sky-200">
-              <span className="text-amber-300">★ {sampleRating(role)}</span> sample rating
-            </p>
+            <p className="mt-1 text-sm text-sky-200">Shifts of 5 or 8 hours</p>
           </div>
         </div>
         <div className="relative mt-4 flex flex-wrap gap-2">
@@ -94,7 +97,6 @@ export default function RoleView({ role, today, cart, ledger, onBack, onAdd }: P
                 </li>
               ))}
             </ul>
-            <p className="muted text-xs">Description is prototype copy based on the role name.</p>
           </section>
           <button type="button" onClick={() => setTab("book")} className="btn-primary w-full px-4 py-4 text-base">
             Book {info.shortLabel}
@@ -107,22 +109,35 @@ export default function RoleView({ role, today, cart, ledger, onBack, onAdd }: P
           <section className="glass space-y-3 p-5">
             <div className="flex items-center justify-between">
               <h2 className="text-lg font-bold">Reviews</h2>
-              <span className="pill text-amber-600">★ {sampleRating(role)} average (sample)</span>
+              {average !== null && (
+                <span className="pill text-amber-600">
+                  ★ {average} · {reviews.length} {reviews.length === 1 ? "rating" : "ratings"}
+                </span>
+              )}
             </div>
-            <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Sample reviews: prototype, not from real customers.
-            </p>
-            <ul className="space-y-3">
-              {info.sampleReviews.map((r) => (
-                <li key={r.text} className="neu-inset p-3 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold">{r.who}</span>
-                    <Stars n={r.stars} />
-                  </div>
-                  <p className="mt-1">{r.text}</p>
-                </li>
-              ))}
-            </ul>
+            {reviews.length === 0 ? (
+              <div className="neu-inset space-y-1 p-4 text-sm">
+                <p className="font-semibold">No reviews yet</p>
+                <p className="muted">
+                  After a shift is completed you can rate your worker from Profile → My bookings. Your ratings for {info.shortLabel.toLowerCase()} shifts will appear here.
+                </p>
+              </div>
+            ) : (
+              <ul className="space-y-3">
+                {reviews.map((r) => (
+                  <li key={r.trackingId} className="neu-inset p-3 text-sm">
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">{r.workerName}</span>
+                      <Stars n={r.stars} />
+                    </div>
+                    {r.note && <p className="mt-1">{r.note}</p>}
+                    <p className="muted mt-1 text-xs">
+                      Your rating · {new Date(r.at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
           <button type="button" onClick={() => setTab("book")} className="btn-primary w-full px-4 py-4 text-base">
             Book {info.shortLabel}

@@ -59,7 +59,7 @@ function friendly(error: SupabaseErrorLike): string {
   return "Something went wrong signing you in. Please try again.";
 }
 
-const NOT_SET_UP = "Login isn't set up on this copy of the app.";
+const NOT_SET_UP = "Login isn't available right now. Please try again later.";
 
 export default function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);

@@ -55,7 +55,7 @@ export default function EditProfileView({ profile, onSave, onBack }: Props) {
           <label htmlFor="p-name" className="block text-sm font-semibold">
             Your name
           </label>
-          <input id="p-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="e.g. Ridhima" className="neu-inset mt-1 w-full px-3 py-3" autoComplete="name" />
+          <input id="p-name" value={name} maxLength={60} onChange={(e) => setName(e.target.value)} placeholder="e.g. Anjali Rao" className="neu-inset mt-1 w-full px-3 py-3" autoComplete="name" />
         </div>
         <div>
           <label htmlFor="p-venue" className="block text-sm font-semibold">

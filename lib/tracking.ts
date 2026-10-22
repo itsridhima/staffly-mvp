@@ -4,8 +4,8 @@ import { roleInfo, WORKERS } from "./prototypeData";
 import type { Booking, LedgerEntry, TrackedWorker, TrackingStatus, Worker } from "./types";
 
 /**
- * PROTOTYPE tracking. In real life Staffly would phone the worker, and the worker would reply.
- * Here those events are triggered by the "Demo controls" buttons and nothing is actually sent.
+ * Tracking steps for each worker. Staffly staff phone the worker and record the replies; until that is
+ * connected, the developer tools (?dev=1) can move a booking through the steps for testing.
  */
 
 export const STATUS_LABEL: Record<TrackingStatus | "rate", string> = {
@@ -78,7 +78,7 @@ export function arrangeReplacement(
     (w) => w.role === tw.role && w.id !== tw.worker.id && isWorkerFree(w, line, ledger),
   );
   if (!replacement) {
-    return { ok: false, reason: `No other ${roleInfo(tw.role).label} is free for this shift in the demo pool` };
+    return { ok: false, reason: `No other ${roleInfo(tw.role).label} is free for this shift right now` };
   }
 
   const at = now.toISOString();
@@ -118,7 +118,7 @@ export function applyAction(
 
   const at = now.toISOString();
   const next: Record<Exclude<TrackingAction, "cannot_come">, { status: TrackingStatus; note: string }> = {
-    call: { status: "confirmation_check", note: "Staffly representative called the worker (simulated)." },
+    call: { status: "confirmation_check", note: "A Staffly representative called the worker to confirm their arrival." },
     confirm: { status: "on_the_way", note: `${tw.worker.name} confirmed and is on the way.` },
     arrive: { status: "on_duty", note: `${tw.worker.name} arrived and started the shift.` },
     finish: { status: "completed", note: `${tw.worker.name} completed the shift.` },

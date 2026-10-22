@@ -1,4 +1,4 @@
-import { roleInfo } from "@/lib/prototypeData";
+import { displayName, roleInfo } from "@/lib/prototypeData";
 import { STATUS_LABEL } from "@/lib/tracking";
 import { formatDateLong, formatTimeRange } from "@/lib/time";
 import type { BookingLine, TrackedWorker } from "@/lib/types";
@@ -13,7 +13,8 @@ interface Props {
 
 export default function WorkerCard({ tracked, line, showStatus = false }: Props) {
   const { worker } = tracked;
-  const initials = worker.name
+  const name = displayName(worker.name);
+  const initials = name
     .split(" ")
     .map((p) => p[0])
     .join("")
@@ -31,7 +32,7 @@ export default function WorkerCard({ tracked, line, showStatus = false }: Props)
         <div className="min-w-0 flex-1 text-sm">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="text-base font-bold">{worker.name}</div>
+              <div className="text-base font-bold">{name}</div>
               <div className="flex items-center gap-1.5 text-blue-700">
                 <RoleIcon role={tracked.role} className="h-4 w-4" />
                 {roleInfo(tracked.role).label}
@@ -56,9 +57,7 @@ export default function WorkerCard({ tracked, line, showStatus = false }: Props)
 
           <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
             <dt className="muted">Contact</dt>
-            <dd className="font-semibold">
-              {worker.contact} <span className="muted text-xs font-normal">(Demo contact)</span>
-            </dd>
+            <dd>Shared by Staffly before the shift</dd>
             <dt className="muted">Tracking ID</dt>
             <dd className="font-mono font-semibold">{tracked.trackingId}</dd>
             <dt className="muted">Date</dt>
@@ -71,12 +70,12 @@ export default function WorkerCard({ tracked, line, showStatus = false }: Props)
 
           {wasReplaced && (
             <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-900">
-              Replaces {tracked.replaced.map((r) => r.worker.name).join(", ")} (booking cancelled). Same tracking ID.
+              Replaces {tracked.replaced.map((r) => displayName(r.worker.name)).join(", ")} (booking cancelled). Same tracking ID.
             </p>
           )}
 
           <span className="mt-2 inline-block rounded-full bg-sky-100 px-2.5 py-0.5 text-xs font-semibold text-blue-800">
-            Staffly-onboarded (prototype)
+            Staffly-onboarded
           </span>
         </div>
       </div>

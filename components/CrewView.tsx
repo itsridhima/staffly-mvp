@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { type CrewMember, crewFromBookings, MAX_FAVOURITES, type ProfileData } from "@/lib/profile";
-import { roleInfo, WORKERS } from "@/lib/prototypeData";
+import { displayName, roleInfo, WORKERS } from "@/lib/prototypeData";
 import { formatDateLong } from "@/lib/time";
 import type { Booking, RoleId } from "@/lib/types";
 import EmptyState from "./EmptyState";
@@ -91,7 +91,7 @@ export default function CrewView({ bookings, profile, onToggleFavourite, onReboo
                       .slice(0, 2)}
                   </span>
                   <div className="min-w-0 flex-1 text-sm">
-                    <div className="font-bold">{m.worker.name}</div>
+                    <div className="font-bold">{displayName(m.worker.name)}</div>
                     <div className="flex items-center gap-1.5 text-blue-700">
                       <RoleIcon role={m.role} className="h-4 w-4" />
                       {roleInfo(m.role).label}
@@ -123,7 +123,7 @@ export default function CrewView({ bookings, profile, onToggleFavourite, onReboo
         </ul>
       )}
       <p className="muted text-xs">
-        Prototype: booking a role again doesn&apos;t guarantee the same worker. Workers are demo data.
+        Booking a role again doesn&apos;t guarantee the same worker.
       </p>
     </section>
   );

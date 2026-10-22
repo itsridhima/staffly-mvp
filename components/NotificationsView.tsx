@@ -1,6 +1,7 @@
 "use client";
 
 import type { AppNotification } from "@/lib/notifications";
+import { cleanText } from "@/lib/prototypeData";
 
 interface Props {
   items: AppNotification[];
@@ -15,7 +16,7 @@ export default function NotificationsView({ items, onOpen, onBack }: Props) {
         ← Back
       </button>
       <h1 className="text-2xl font-black">Notifications</h1>
-      <p className="muted -mt-2 text-xs">Prototype: these are simulated in-app updates from the tracking demo controls.</p>
+      <p className="muted -mt-2 text-xs">Updates about your workers and bookings.</p>
       {items.length === 0 ? (
         <div className="glass p-5 text-sm">
           <p className="font-semibold">Nothing new</p>
@@ -27,7 +28,7 @@ export default function NotificationsView({ items, onOpen, onBack }: Props) {
             <li key={n.id}>
               <button type="button" onClick={() => onOpen(n.reference)} className="glass w-full p-4 text-left">
                 <div className="font-bold">{n.title}</div>
-                <div className="text-sm">{n.body}</div>
+                <div className="text-sm">{cleanText(n.body)}</div>
                 <div className="muted mt-1 text-xs">
                   {new Date(n.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })} · {n.reference}
                 </div>

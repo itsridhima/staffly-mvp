@@ -47,7 +47,7 @@ export default function HelpView({ onOpenBookings, onAskAssistant, onBack }: Pro
             </span>
             <span className="flex-1">
               <span className="block font-bold">Ask Staffly</span>
-              <span className="muted block text-xs">Chat with the helper about booking, prices and tracking</span>
+              <span className="muted block text-xs">Chat about booking, prices and tracking</span>
             </span>
             <span aria-hidden className="muted">›</span>
           </button>
@@ -89,7 +89,7 @@ export default function HelpView({ onOpenBookings, onAskAssistant, onBack }: Pro
 
       {items.length === 0 ? (
         <p className="glass p-4 text-sm">
-          No answers match “{query}”. Try fewer words, or ask the helper.
+          No answers match “{query}”. Try fewer words, or ask Staffly.
         </p>
       ) : (
         <ul className="space-y-3">
@@ -107,7 +107,13 @@ export default function HelpView({ onOpenBookings, onAskAssistant, onBack }: Pro
         </ul>
       )}
 
-      <p className="muted text-xs">Phone and email support details haven&apos;t been set up yet (prototype).</p>
+      <p className="muted text-sm">
+        Can&apos;t find your answer?{" "}
+        <button type="button" onClick={onAskAssistant} className="font-semibold text-blue-700 underline">
+          Ask Staffly
+        </button>
+        .
+      </p>
     </section>
   );
 }

@@ -36,7 +36,7 @@ All three are covered by automated logic tests (`npm test`) and were also clicke
 - **Your crew:** workers who've been on your shifts, a heart to save favourites, and "Book {role} again" (does not guarantee the same worker).
 - **Saved venues:** up to 5 addresses with one selected; the selected venue is shown on the review page, confirmation and booking detail.
 - **Help & Support:** searchable FAQ with topics, a shortcut to My bookings, and a button that opens the chat helper.
-- **Manage account:** log out, Terms of Use, Privacy Policy, Refund & Cancellation Policy (placeholders: not written yet), and Manage data (download your data, clear your saved profile, clear this device).
+- **Manage account:** log out, Terms of Use, Privacy Policy, Refund & Cancellation Policy (full text in `lib/legal.ts`), and Manage data (download your data, clear your saved profile, clear this device).
 - Not included on purpose: offers, referrals and a wallet (nothing was specified), and account deletion (not possible without a server-side admin key).
 - Profile data is stored in your sign-in account's metadata (no extra Supabase table), or in this browser in guest mode.
 
@@ -104,6 +104,14 @@ Get a free key at https://aistudio.google.com/apikey, copy `.env.example` to `.e
 - `lib/pricing.ts`, `lib/availability.ts`, `lib/booking.ts`, `lib/tracking.ts`, `lib/ledger.ts` – the logic
 - `lib/supabaseClient.ts`, `components/AuthProvider.tsx`, `components/useBookings.ts`, `supabase/schema.sql` – login and saved bookings
 - `lib/staffly.test.ts` and friends – tests
+
+## Legal text and what is still open
+`lib/legal.ts` holds the Terms of Use, Privacy Policy and Refund & Cancellation Policy, written from how Staffly works today. **Have a lawyer review them.** They deliberately do not state a company name, support phone or email, cancellation fee or governing court, because none were decided; they point to Help & Support instead. Add those details to `lib/legal.ts` when you have them. The GST rate (18%) lives in `lib/pricing.ts` and should be confirmed.
+
+Still true about the app today, and stated in plain words where it matters: online payment is not switched on (confirming a booking charges nothing), the worker profiles in `lib/prototypeData.ts` are sample profiles, and no worker is notified or called automatically. Role pages show no reviews until an employer rates a worker; there are no invented reviews.
+
+## Developer tools
+Open the app with `?dev=1` (for example `https://your-site/?dev=1`) to show testing controls that customers don't see: a button on the review, payment and confirm screens that books out the first item (to test the "slot no longer available" screen), and buttons on a booking that move a worker through the tracking steps. Use `?dev=0` to hide them again.
 
 ## Secrets
 `GEMINI_API_KEY` lives only in `.env.local` (git-ignored) and is read on the server. The two Supabase values are public by design; security comes from Row Level Security. `.env` and `.env*.local` are in `.gitignore`, and `.env.example` contains no real values. On Vercel, add keys under Environment Variables, never in the code.

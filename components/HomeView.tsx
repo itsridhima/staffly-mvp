@@ -1,7 +1,7 @@
 "use client";
 
 import { formatINR, headcount, billBreakdown } from "@/lib/pricing";
-import { ROLES, sampleRating } from "@/lib/prototypeData";
+import { ROLES } from "@/lib/prototypeData";
 import type { BookingLine, RoleId } from "@/lib/types";
 import RoleIcon from "./RoleIcon";
 
@@ -61,7 +61,6 @@ export default function HomeView({ lines, greetingName, notificationCount, onOpe
               </>
             )}
           </div>
-          <span className="pill pill-dark">Prototype</span>
         </div>
         <p className="mt-3 text-sm text-sky-100">
           {people === 0
@@ -113,9 +112,8 @@ export default function HomeView({ lines, greetingName, notificationCount, onOpe
                     {formatINR(role.price[5])} / 5h · {formatINR(role.price[8])} / 8h · excl. GST
                   </span>
                 </span>
-                <span className="pill shrink-0 text-amber-600" title="Sample rating, not from real customers">
-                  ★ {sampleRating(role.id)}
-                  <span className="muted text-[0.65rem] font-medium">sample</span>
+                <span aria-hidden className="muted shrink-0 text-xl">
+                  ›
                 </span>
               </button>
             </li>

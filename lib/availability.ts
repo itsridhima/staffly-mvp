@@ -40,7 +40,7 @@ export function canStaffLine(
 ): StaffResult {
   if (line.startMinutes + line.length * 60 > 24 * 60) return { ok: false, reason: "Shift would run past midnight" };
   if (hasStarted(line, now)) return { ok: false, reason: "This time has already passed" };
-  if (line.startMinutes === DEMO_BLOCKED_START) return { ok: false, reason: "Already booked (demo)" };
+  if (line.startMinutes === DEMO_BLOCKED_START) return { ok: false, reason: "Fully booked" };
 
   const free = workers.filter((w) => w.role === line.role && isWorkerFree(w, line, ledger));
   if (free.length < line.qty) {

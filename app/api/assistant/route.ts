@@ -11,7 +11,7 @@ const BACKUP_MODEL = "gemini-3.5-flash";
 const MAX_MESSAGES = 10;
 const MAX_CHARS = 600;
 
-// Very small per-IP limit so a public demo can't run up usage. (In-memory: resets on restart.)
+// Very small per-IP limit so a public site can't run up usage. (In-memory: resets on restart.)
 const WINDOW_MS = 10 * 60 * 1000;
 const MAX_REQUESTS = 30;
 const hits = new Map<string, number[]>();

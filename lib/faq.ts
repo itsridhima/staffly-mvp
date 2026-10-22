@@ -20,7 +20,7 @@ const ROLE_WORDS: Record<RoleId, string[]> = {
 };
 
 const UNKNOWN =
-  "I don't have that information in this prototype. I can help with how booking works, role prices, GST, slots, tracking, and whether bookings and payments are real.";
+  "I don't have that information. I can help with how booking works, role prices, GST, slots, tracking, payments and our refund and cancellation policy.";
 
 function has(q: string, words: string[]): boolean {
   return words.some((w) => q.includes(w));
@@ -36,27 +36,35 @@ export function faqAnswer(question: string, ctx: AssistantContext): string {
 
   const mentionedRoles = (Object.keys(ROLE_WORDS) as RoleId[]).filter((id) => has(q, ROLE_WORDS[id]));
 
-  if (has(q, ["cancel", "refund", "verif", "background", "police", "city", "cities", "where", "contact us", "phone number of staffly", "support", "insurance", "salary", "wage"])) {
+  if (has(q, ["worker", "people", "person", "staff"]) && has(q, ["real", "genuine", "actual", "fake"])) {
+    return "The worker profiles in the app are sample profiles while Staffly builds its worker network, and no worker is notified when a booking is confirmed yet.";
+  }
+
+  if (has(q, ["refund", "cancel"])) {
+    return "If we can't provide a worker for a booked shift, you aren't charged for it, or you're refunded in full including GST. To cancel or change a booking, send a request through Help & Support before the shift starts. Any cancellation fee is shown before you confirm. The full policy is under Profile → Manage account → Refund & Cancellation Policy.";
+  }
+
+  if (has(q, ["verif", "background", "police", "city", "cities", "where", "contact us", "phone number of staffly", "support", "insurance", "salary", "wage"])) {
     return UNKNOWN;
   }
 
-  if (has(q, ["real", "fake", "demo", "prototype", "actually"])) {
-    return "This is a prototype. The workers, reviews and contact numbers are fictional demo data, availability is simulated, and the payment, bank page, calls and notifications are fake: no real money moves, no real worker is notified, and no real booking is made.";
+  if (has(q, ["real", "actually", "charged", "charge me", "pay online", "money"])) {
+    return "Online payment isn't switched on yet, so confirming a booking doesn't charge you. We'll update our terms and tell you before charging starts.";
   }
 
   if (has(q, ["my total", "my bill", "my booking", "my order", "how much do i", "current"])) {
     if (headcount(ctx.lines) === 0) return "Your booking is empty. Open a role from the home screen, choose a shift and add workers to start.";
     const b = billBreakdown(ctx.lines);
     const parts = b.lines.map((l) => `${l.qty} x ${l.label} (${l.length}h, ${formatDateLong(l.date)}, ${formatTimeRange(l.startMinutes, l.length)})`);
-    return `Your booking: ${parts.join("; ")}. Item total ${formatINR(b.itemTotal)} before GST, GST ${formatINR(b.gst)} (placeholder ${Math.round(GST_RATE * 100)}%), grand total ${formatINR(b.grandTotal)}.`;
+    return `Your booking: ${parts.join("; ")}. Item total ${formatINR(b.itemTotal)} before GST, GST ${formatINR(b.gst)} (${Math.round(GST_RATE * 100)}%), grand total ${formatINR(b.grandTotal)}.`;
   }
 
   if (has(q, ["track", "status", "replacement", "replace", "on the way", "on duty", "rate your", "rating"])) {
-    return "After booking, open Profile → My bookings. Each worker has a tracking ID with these steps: Booked, Confirmation check (Staffly calls the worker one hour before), On the way, Replacement arranged (if the worker can't come, a replacement is assigned under the same tracking ID), On duty, Shift completed, then Rate your experience. In this prototype the steps are simulated with demo buttons.";
+    return "After booking, open Profile → My bookings. Each worker has a tracking ID with these steps: Booked, Confirmation check (Staffly calls the worker one hour before), On the way, Replacement arranged (if the worker can't come, a replacement is assigned under the same tracking ID), On duty, Shift completed, then Rate your experience.";
   }
 
   if (has(q, ["gst", "tax"])) {
-    return `Prices are shown before taxes. The payment page adds GST at ${Math.round(GST_RATE * 100)}%, but that rate is a placeholder and hasn't been confirmed.`;
+    return `Prices are shown before taxes. The payment page adds GST at ${Math.round(GST_RATE * 100)}%, and you see the full total before you confirm.`;
   }
 
   if (has(q, ["price", "cost", "rate", "charge", "how much", "fee", "₹", "rupee"])) {
@@ -71,7 +79,7 @@ export function faqAnswer(question: string, ctx: AssistantContext): string {
   }
 
   if (has(q, ["how many", "multiple", "more than one", "quantity", "mix", "several", "different shift", "different time"])) {
-    return "You can add several roles to one booking, and as many people per role as the demo has available. Each role keeps its own date, shift length and start time, so for example 2 kitchen helpers can work 12 PM to 5 PM while a waiter works 7 AM to 3 PM.";
+    return "You can add several roles to one booking, and as many people per role as are available. Each role keeps its own date, shift length and start time, so for example 2 kitchen helpers can work 12 PM to 5 PM while a waiter works 7 AM to 3 PM.";
   }
 
   if (has(q, ["shift", "5 hour", "8 hour", "5-hour", "8-hour", "length", "hours", "slot", "time", "date", "when"])) {
@@ -79,7 +87,7 @@ export function faqAnswer(question: string, ctx: AssistantContext): string {
   }
 
   if (has(q, ["how", "book", "work", "start", "step", "process", "pay", "payment", "login", "log in", "sign"])) {
-    return "1) On Home, open a role. 2) Choose a 5-hour or 8-hour shift, a date and a start time, pick an available slot and the number of workers, then Add to booking. 3) Repeat for other roles. 4) Review and press Continue (you'll be asked to log in). 5) Check the bill with GST, press Pay, then approve on the (simulated) bank page. 6) You get a booking reference and a profile card for each worker.";
+    return "1) On Home, open a role. 2) Choose a 5-hour or 8-hour shift, a date and a start time, pick an available slot and the number of workers, then Add to booking. 3) Repeat for other roles. 4) Review and press Continue (you'll be asked to log in). 5) Check the bill with GST, press Pay, then confirm the payment. 6) You get a booking reference and a profile card for each worker.";
   }
 
   if (has(q, ["hi", "hello", "hey", "namaste", "help"])) {

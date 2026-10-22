@@ -76,8 +76,8 @@ export default function LoginScreen({ reason, onCancel }: Props) {
   if (!configured) {
     return (
       <section className="glass space-y-3 p-6">
-        <h2 className="text-xl font-bold">Login isn&apos;t set up on this copy</h2>
-        <p className="muted text-sm">The app owner hasn&apos;t added the Supabase keys yet, so login is unavailable here.</p>
+        <h2 className="text-xl font-bold">Login isn&apos;t available right now</h2>
+        <p className="muted text-sm">Please try again in a little while.</p>
         <button type="button" onClick={onCancel} className="btn-ghost px-4 py-3">
           Back
         </button>
@@ -100,7 +100,7 @@ export default function LoginScreen({ reason, onCancel }: Props) {
       <div className="glass space-y-4 p-5">
         {nothingOn && (
           <p role="alert" className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
-            No login method is switched on yet. The app owner needs to enable one in Supabase.
+            Login isn&apos;t available right now. Please try again in a little while.
           </p>
         )}
 

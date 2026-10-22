@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { displayName } from "@/lib/prototypeData";
 import type { TrackedWorker } from "@/lib/types";
 
 interface Props {
@@ -16,7 +17,7 @@ export default function RatingForm({ tracked, onSubmit }: Props) {
     return (
       <div className="neu-inset p-3 text-sm">
         <div className="font-semibold">
-          You rated {tracked.worker.name}: {"★".repeat(tracked.rating.stars)}
+          You rated {displayName(tracked.worker.name)}: {"★".repeat(tracked.rating.stars)}
           <span className="text-slate-300">{"★".repeat(5 - tracked.rating.stars)}</span>
         </div>
         {tracked.rating.note && <p className="muted mt-1">&ldquo;{tracked.rating.note}&rdquo;</p>}
@@ -34,7 +35,7 @@ export default function RatingForm({ tracked, onSubmit }: Props) {
         if (stars > 0) onSubmit(stars, note);
       }}
     >
-      <div className="font-semibold">Rate your experience with {tracked.worker.name}</div>
+      <div className="font-semibold">Rate your experience with {displayName(tracked.worker.name)}</div>
       <div className="flex gap-1" role="radiogroup" aria-label="Star rating">
         {[1, 2, 3, 4, 5].map((n) => (
           <button

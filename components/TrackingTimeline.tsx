@@ -1,3 +1,4 @@
+import { cleanText } from "@/lib/prototypeData";
 import { STATUS_DESCRIPTION, STATUS_LABEL } from "@/lib/tracking";
 import type { TrackedWorker, TrackingStatus } from "@/lib/types";
 
@@ -70,7 +71,7 @@ export default function TrackingTimeline({ tracked }: { tracked: TrackedWorker }
               {done && event ? (
                 <>
                   <div className="muted text-xs">{timeLabel(event.at)}</div>
-                  {event.note && <div>{event.note}</div>}
+                  {event.note && <div>{cleanText(event.note)}</div>}
                 </>
               ) : (
                 !skipped && <div className="text-xs">{step.description}</div>

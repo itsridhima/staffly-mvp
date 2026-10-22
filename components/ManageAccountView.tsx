@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LEGAL_DOCS, LEGAL_UPDATED } from "@/lib/legal";
 import { KEYS } from "@/lib/localStore";
 import { buildDataExport, EMPTY_PROFILE, type ProfileData } from "@/lib/profile";
 import type { Booking } from "@/lib/types";
@@ -16,20 +17,6 @@ interface Props {
 
 type Section = null | "terms" | "privacy" | "refund" | "data";
 
-const DOCS: Record<"terms" | "privacy" | "refund", { title: string; body: string }> = {
-  terms: {
-    title: "Terms of Use",
-    body: "Staffly's Terms of Use haven't been written yet. They will appear here before Staffly launches.",
-  },
-  privacy: {
-    title: "Privacy Policy",
-    body: "Staffly's Privacy Policy hasn't been written yet. In this prototype your profile is stored in your sign-in account (or in this browser if you're a guest) and your bookings in your account. A full policy will appear here before launch.",
-  },
-  refund: {
-    title: "Refund & Cancellation Policy",
-    body: "Refund and cancellation rules haven't been decided yet, so there is nothing to show here. In this prototype nothing is actually charged.",
-  },
-};
 
 function Row({ icon, label, onClick, danger = false }: { icon: string[]; label: string; onClick: () => void; danger?: boolean }) {
   return (
@@ -83,14 +70,28 @@ export default function ManageAccountView({ profile, bookings, onSaveProfile, on
   }
 
   if (section && section !== "data") {
-    const doc = DOCS[section];
+    const doc = LEGAL_DOCS[section];
     return (
       <section className="space-y-4">
-        <SubPageHeader title={doc.title} onBack={() => setSection(null)} />
-        <div className="glass space-y-2 p-5 text-sm leading-relaxed">
-          <p>{doc.body}</p>
-          <p className="muted text-xs">Prototype placeholder: this is not a real legal document.</p>
-        </div>
+        <SubPageHeader title={doc.title} subtitle={`Last updated ${LEGAL_UPDATED}`} onBack={() => setSection(null)} />
+        <article className="glass space-y-5 p-5 text-sm leading-relaxed">
+          <p>{doc.intro}</p>
+          {doc.sections.map((s) => (
+            <section key={s.heading} className="space-y-2">
+              <h2 className="text-base font-bold">{s.heading}</h2>
+              {s.paragraphs?.map((p) => (
+                <p key={p}>{p}</p>
+              ))}
+              {s.bullets && (
+                <ul className="list-disc space-y-1.5 pl-5">
+                  {s.bullets.map((b) => (
+                    <li key={b}>{b}</li>
+                  ))}
+                </ul>
+              )}
+            </section>
+          ))}
+        </article>
       </section>
     );
   }
@@ -126,13 +127,13 @@ export default function ManageAccountView({ profile, bookings, onSaveProfile, on
         </div>
         <div className="glass space-y-3 p-5">
           <h2 className="font-bold">Clear this device</h2>
-          <p className="muted text-sm">Empties your current booking and temporary demo data on this device, then reloads.</p>
+          <p className="muted text-sm">Empties your current, unconfirmed booking and saved settings on this device, then reloads.</p>
           <button type="button" onClick={clearDevice} className="btn-ghost px-4 py-3">
             Clear this device
           </button>
         </div>
         <p className="muted text-xs">
-          Deleting your whole account and booking history isn&apos;t available in this prototype yet.
+          Deleting your whole account and booking history isn&apos;t available in the app yet.
         </p>
         {message && (
           <p role="status" className="rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">

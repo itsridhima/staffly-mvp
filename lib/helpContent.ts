@@ -58,7 +58,7 @@ export const HELP_ITEMS: HelpItem[] = [
     topic: "booking",
     popular: true,
     q: "How do I track my workers?",
-    a: "Open Profile → My bookings → your booking. Each worker has a tracking ID and a timeline: Booked, Confirmation check (a Staffly representative calls the worker one hour before), On the way, On duty, Shift completed, then Rate your experience. If a worker can't come, a replacement is arranged under the same tracking ID. In this prototype these steps are simulated.",
+    a: "Open Profile → My bookings → your booking. Each worker has a tracking ID and a timeline: Booked, Confirmation check (a Staffly representative calls the worker one hour before), On the way, On duty, Shift completed, then Rate your experience. If a worker can't come, a replacement is arranged under the same tracking ID and you're notified in the app.",
   },
   {
     id: "venue",
@@ -70,7 +70,7 @@ export const HELP_ITEMS: HelpItem[] = [
     id: "crew",
     topic: "account",
     q: "How do I save workers I liked?",
-    a: "Open Profile → Your crew, then tap the heart on a worker. Booking the same role again doesn't guarantee the same worker in this prototype.",
+    a: "Open Profile → Your crew, then tap the heart on a worker. Booking the same role again doesn't guarantee the same worker.",
   },
   {
     id: "login",
@@ -82,7 +82,7 @@ export const HELP_ITEMS: HelpItem[] = [
     id: "data",
     topic: "account",
     q: "Can I download or clear my data?",
-    a: "Yes: Profile → Manage account → Manage data lets you download your data and clear your saved profile. Deleting your whole account isn't available in this prototype yet.",
+    a: "Yes: Profile → Manage account → Manage data lets you download your data and clear your saved profile. Deleting your whole account isn't available in the app yet.",
   },
   {
     id: "price",
@@ -95,20 +95,26 @@ export const HELP_ITEMS: HelpItem[] = [
     id: "gst",
     topic: "payment",
     q: "Is GST included?",
-    a: `Prices are shown before GST. GST is added on the payment page at ${Math.round(GST_RATE * 100)}%, which is a placeholder rate that hasn't been confirmed.`,
+    a: `Prices are shown before GST. GST is added on the payment page at ${Math.round(GST_RATE * 100)}%, and you see the full total before you confirm.`,
   },
   {
     id: "real",
     topic: "payment",
     popular: true,
-    q: "Are the payments real?",
-    a: "No. This is a prototype: the payment and bank pages are simulated, no money moves, and the workers and tracking updates are demo data.",
+    q: "Will I be charged when I confirm?",
+    a: "Not yet. Online payment isn't switched on, so confirming a booking doesn't charge you. We'll update our terms and tell you before charging starts.",
   },
   {
     id: "refund",
     topic: "payment",
     q: "What is the refund and cancellation policy?",
-    a: "Refund and cancellation rules haven't been decided yet, so there is nothing to show here. This page will be updated when they are.",
+    a: "If we can't provide a worker for a booked shift, you aren't charged for it, or you're refunded in full including GST. To cancel or change a booking, send a request through Help & Support before the shift starts. Any cancellation fee is shown before you confirm. The full policy is under Profile → Manage account → Refund & Cancellation Policy.",
+  },
+  {
+    id: "replace",
+    topic: "booking",
+    q: "What if my worker doesn't show up?",
+    a: "Staffly will try to arrange a replacement. The replacement appears under the same tracking ID and you're notified in the app. If we can't provide a worker, you aren't charged for that shift.",
   },
 ];
 

@@ -18,7 +18,6 @@ import NotificationsView from "@/components/NotificationsView";
 import PaymentPage, { type PayMethod } from "@/components/PaymentPage";
 import PaymentsView from "@/components/PaymentsView";
 import ProfileView, { type ProfileTarget } from "@/components/ProfileView";
-import PrototypeBanner from "@/components/PrototypeBanner";
 import RoleView from "@/components/RoleView";
 import SimulatedBankPage from "@/components/SimulatedBankPage";
 import UnavailableNotice from "@/components/UnavailableNotice";
@@ -27,6 +26,7 @@ import { useBookings } from "@/components/useBookings";
 import { useProfile } from "@/components/useProfile";
 import { assignLines, findNearestAlternatives, type SlotOption } from "@/lib/availability";
 import { confirmBooking, makeLineId, simulateOtherBooking } from "@/lib/booking";
+import { readDevMode } from "@/lib/devMode";
 import { ledgerFromBookings } from "@/lib/ledger";
 import { KEYS, readLocal, writeLocal } from "@/lib/localStore";
 import { deriveNotifications } from "@/lib/notifications";
@@ -101,12 +101,15 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const [loginNote, setLoginNote] = useState<string | null>(null);
   const [seenAt, setSeenAt] = useState("");
+  // Test controls, hidden from customers. Open the app with ?dev=1 to show them.
+  const [devTools, setDevTools] = useState(false);
   // Where the back arrow on the booking detail and venues pages should return to.
   const [bookingBack, setBookingBack] = useState<View>("my-bookings");
   const [venuesBack, setVenuesBack] = useState<View>("profile");
 
-  // Load client-only state once (today's date, saved cart, demo entries).
+  // Load client-only state once (today's date, saved cart, test entries).
   useEffect(() => {
+    setDevTools(readDevMode(window.location.search));
     setToday(toDateString(new Date()));
     setCart(readLocal<BookingLine[]>(KEYS.cart, []));
     setDemoEntries(readLocal<LedgerEntry[]>(KEYS.demoLedger, []));
@@ -124,7 +127,7 @@ export default function Home() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  // Everyone's booked workers: the user's saved bookings plus demo entries.
+  // Everyone's booked workers: the user's saved bookings plus any test entries.
   const ledger = useMemo(() => ledgerFromBookings(bookings, demoEntries), [bookings, demoEntries]);
 
   const notifications = useMemo(() => deriveNotifications(bookings), [bookings]);
@@ -199,7 +202,7 @@ export default function Home() {
       goTaken(result.lineId, result.reason);
       return;
     }
-    // Remember where the workers should go and how it was paid (simulated).
+    // Remember where the workers should go and the payment method chosen.
     const booking: Booking = { ...result.booking, venue: toBookingVenue(selectedVenue(profile)), paymentMethod: method };
     setConfirmed(booking);
     setCart([]);
@@ -240,7 +243,7 @@ export default function Home() {
     }
     setBookingNotice(
       action === "cannot_come"
-        ? `Replacement arranged for ${trackingId}. Your booking was updated and you've been notified in the app (simulated).`
+        ? `Replacement arranged for ${trackingId}. Your booking was updated and you've been notified in the app.`
         : null,
     );
     await updateBooking(result.booking);
@@ -298,10 +301,7 @@ export default function Home() {
 
   if (today === null || !loaded) {
     return (
-      <>
-        <PrototypeBanner />
-        <main className="mx-auto max-w-lg p-6 muted">Loading…</main>
-      </>
+      <main className="mx-auto max-w-lg p-6 muted">Loading…</main>
     );
   }
 
@@ -315,10 +315,9 @@ export default function Home() {
 
   return (
     <>
-      <PrototypeBanner />
       <main className="mx-auto max-w-lg space-y-4 px-4 pb-32 pt-5">
         {toast && (
-          <div role="status" className="glass-dark fixed left-1/2 top-12 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 px-4 py-3 text-sm font-semibold">
+          <div role="status" className="glass-dark fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 px-4 py-3 text-sm font-semibold">
             ✓ {toast}
           </div>
         )}
@@ -344,6 +343,7 @@ export default function Home() {
             today={today}
             cart={cart}
             ledger={ledger}
+            bookings={bookings}
             onBack={() => go("home")}
             onAdd={addLine}
           />
@@ -361,18 +361,18 @@ export default function Home() {
             onRemove={(id) => setCart((prev) => prev.filter((l) => l.id !== id))}
             onAddAnother={() => go("home")}
             onContinue={handleContinue}
-            onDemoTake={demoTake}
+            onDemoTake={devTools ? demoTake : undefined}
           />
         )}
 
         {view === "login" && <LoginScreen reason="Log in to continue to payment. Your booking is saved." onCancel={() => go("cart")} />}
 
         {view === "payment" && (
-          <PaymentPage lines={cart} method={method} onMethod={setMethod} onBack={() => go("cart")} onPay={() => advanceIfStillFree("bank")} onDemoTake={demoTake} />
+          <PaymentPage lines={cart} method={method} onMethod={setMethod} onBack={() => go("cart")} onPay={() => advanceIfStillFree("bank")} onDemoTake={devTools ? demoTake : undefined} />
         )}
 
         {view === "bank" && (
-          <SimulatedBankPage lines={cart} onApprove={approvePayment} onDecline={() => go("payment")} onDemoTake={demoTake} />
+          <SimulatedBankPage lines={cart} onApprove={approvePayment} onDecline={() => go("payment")} onDemoTake={devTools ? demoTake : undefined} />
         )}
 
         {view === "taken" && taken && takenLine && (
@@ -461,6 +461,7 @@ export default function Home() {
             onBack={() => go(bookingBack)}
             onAction={onTrackingAction}
             onRate={onRate}
+            devTools={devTools}
           />
         )}
 

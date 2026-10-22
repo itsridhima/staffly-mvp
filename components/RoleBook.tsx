@@ -150,7 +150,7 @@ export default function RoleBook({ role, today, cart, ledger, onAdd }: Props) {
                 setQty(Math.max(1, Math.min(max, v)));
               }}
             />
-            <span className="muted text-sm">up to {max} in the demo</span>
+            <span className="muted text-sm">up to {max} for this role</span>
           </div>
           {selected !== null && !chosen && (
             <p className="text-sm text-amber-700">That slot isn&apos;t available for {qty} {qty === 1 ? "worker" : "workers"}. Pick another slot or change the number.</p>

@@ -18,7 +18,8 @@ interface Props {
   onRemove: (id: string) => void;
   onAddAnother: () => void;
   onContinue: () => void;
-  onDemoTake: () => void;
+  /** Only passed when developer tools are on */
+  onDemoTake?: () => void;
 }
 
 /** Review booking: every role keeps its own date, shift length, timing and price. */
@@ -113,7 +114,7 @@ export default function CartView({ lines, loginNote, venue, onChangeVenue, onRem
           Continue
         </button>
       </div>
-      <DemoTakeSlotButton onClick={onDemoTake} />
+      {onDemoTake && <DemoTakeSlotButton onClick={onDemoTake} />}
     </section>
   );
 }
