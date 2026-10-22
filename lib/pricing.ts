@@ -1,5 +1,5 @@
-import { roleInfo, ROLES } from "./prototypeData";
-import type { Bill, BillLine, Order, ShiftLength } from "./types";
+import { roleInfo } from "./prototypeData";
+import type { Bill, BillLine, BookingLine, LineSpec, ShiftLength } from "./types";
 
 /**
  * PLACEHOLDER: the real GST rate has not been confirmed by Staffly.
@@ -7,25 +7,36 @@ import type { Bill, BillLine, Order, ShiftLength } from "./types";
  */
 export const GST_RATE = 0.18;
 
-export function orderHeadcount(order: Order): number {
-  return Object.values(order).reduce((sum, qty) => sum + (qty ?? 0), 0);
+export function headcount(lines: BookingLine[]): number {
+  return lines.reduce((sum, l) => sum + l.qty, 0);
 }
 
-export function billBreakdown(order: Order, length: ShiftLength, gstRate: number = GST_RATE): Bill {
-  const lines: BillLine[] = [];
-  for (const role of ROLES) {
-    const qty = order[role.id] ?? 0;
-    if (qty <= 0) continue;
-    const unitPrice = role.price[length];
-    lines.push({ role: role.id, label: roleInfo(role.id).label, qty, unitPrice, amount: qty * unitPrice });
-  }
-  const itemTotal = lines.reduce((sum, l) => sum + l.amount, 0);
+export function unitPrice(role: BookingLine["role"], length: ShiftLength): number {
+  return roleInfo(role).price[length];
+}
+
+/** Price of one line (qty x price for that role and shift length), before GST. */
+export function lineTotal(line: Pick<LineSpec, "role" | "qty" | "length">): number {
+  return line.qty * unitPrice(line.role, line.length);
+}
+
+export function billBreakdown(lines: BookingLine[], gstRate: number = GST_RATE): Bill {
+  const billLines: BillLine[] = lines
+    .filter((l) => l.qty > 0)
+    .map((l) => ({
+      lineId: l.id,
+      role: l.role,
+      label: roleInfo(l.role).label,
+      qty: l.qty,
+      unitPrice: unitPrice(l.role, l.length),
+      amount: lineTotal(l),
+      length: l.length,
+      date: l.date,
+      startMinutes: l.startMinutes,
+    }));
+  const itemTotal = billLines.reduce((sum, l) => sum + l.amount, 0);
   const gst = Math.round(itemTotal * gstRate);
-  return { lines, itemTotal, gstRate, gst, grandTotal: itemTotal + gst };
-}
-
-export function orderTotal(order: Order, length: ShiftLength): number {
-  return billBreakdown(order, length).itemTotal;
+  return { lines: billLines, itemTotal, gstRate, gst, grandTotal: itemTotal + gst };
 }
 
 export function formatINR(amount: number): string {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { Order, ShiftLength } from "@/lib/types";
+import type { BookingLine } from "@/lib/types";
 
 interface Msg {
   role: "user" | "assistant";
@@ -11,15 +11,13 @@ interface Msg {
 }
 
 interface Props {
-  step: string;
-  length: ShiftLength;
-  date: string;
-  order: Order;
+  view: string;
+  lines: BookingLine[];
 }
 
-const SUGGESTIONS = ["How does booking work?", "What does each role cost?", "Are the payments real?"];
+const SUGGESTIONS = ["How does booking work?", "What does each role cost?", "How does tracking work?"];
 
-export default function AssistantChat({ step, length, date, order }: Props) {
+export default function AssistantChat({ view, lines }: Props) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState("");
@@ -41,7 +39,13 @@ export default function AssistantChat({ step, length, date, order }: Props) {
       const res = await fetch("/api/assistant", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, context: { step, length, date, order } }),
+        body: JSON.stringify({
+          messages: next.map(({ role, content: c }) => ({ role, content: c })),
+          context: {
+            view,
+            lines: lines.map(({ role, qty, length, date, startMinutes }) => ({ role, qty, length, date, startMinutes })),
+          },
+        }),
       });
       const data = (await res.json().catch(() => ({}))) as { reply?: string; source?: "ai" | "faq" };
       const reply = res.ok && data.reply ? data.reply : "Sorry, something went wrong. Please try again.";
@@ -58,7 +62,7 @@ export default function AssistantChat({ step, length, date, order }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-24 right-4 z-20 rounded-full bg-emerald-700 px-4 py-3 text-sm font-semibold text-white shadow-lg"
+        className="btn-primary fixed bottom-28 right-4 z-40 px-4 py-3 text-sm"
       >
         Need help? Ask Staffly
       </button>
@@ -68,12 +72,12 @@ export default function AssistantChat({ step, length, date, order }: Props) {
   return (
     <section
       aria-label="Staffly assistant"
-      className="fixed bottom-4 right-4 z-20 flex h-[28rem] w-[calc(100vw-2rem)] max-w-sm flex-col rounded-2xl border border-stone-300 bg-white shadow-xl"
+      className="glass fixed bottom-4 right-4 z-40 flex h-[28rem] w-[calc(100vw-2rem)] max-w-sm flex-col overflow-hidden"
     >
-      <header className="flex items-center justify-between rounded-t-2xl bg-emerald-700 px-4 py-3 text-white">
+      <header className="glass-dark flex items-center justify-between rounded-none px-4 py-3">
         <div>
-          <div className="font-semibold">Staffly assistant</div>
-          <div className="text-xs opacity-90">AI helper · prototype · can&apos;t book for you</div>
+          <div className="font-bold">Staffly assistant</div>
+          <div className="text-xs text-sky-200">AI helper · prototype · can&apos;t book for you</div>
         </div>
         <button type="button" onClick={() => setOpen(false)} aria-label="Close assistant" className="px-2 text-xl">
           ×
@@ -83,15 +87,10 @@ export default function AssistantChat({ step, length, date, order }: Props) {
       <div className="flex-1 space-y-2 overflow-y-auto p-3 text-sm" aria-live="polite">
         {messages.length === 0 && (
           <div>
-            <p className="mb-2 text-stone-600">Hi! Ask me how booking works, prices, or what to do on this screen.</p>
+            <p className="muted mb-2">Hi! Ask me how booking works, prices, tracking, or what to do on this screen.</p>
             <div className="flex flex-wrap gap-2">
               {SUGGESTIONS.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => send(s)}
-                  className="rounded-full border border-emerald-600 px-3 py-1 text-emerald-800 hover:bg-emerald-50"
-                >
+                <button key={s} type="button" onClick={() => send(s)} className="pill text-blue-800">
                   {s}
                 </button>
               ))}
@@ -102,14 +101,14 @@ export default function AssistantChat({ step, length, date, order }: Props) {
           <div
             key={i}
             className={`max-w-[85%] whitespace-pre-wrap rounded-2xl px-3 py-2 ${
-              m.role === "user" ? "ml-auto bg-emerald-600 text-white" : "bg-stone-100"
+              m.role === "user" ? "btn-primary ml-auto rounded-2xl" : "neu-inset"
             }`}
           >
             {m.content}
-            {m.source === "faq" && <div className="mt-1 text-xs text-stone-500">Quick answer (AI helper not available)</div>}
+            {m.source === "faq" && <div className="muted mt-1 text-xs">Quick answer (AI helper not available)</div>}
           </div>
         ))}
-        {busy && <div className="w-fit rounded-2xl bg-stone-100 px-3 py-2 text-stone-500">Thinking…</div>}
+        {busy && <div className="neu-inset muted w-fit px-3 py-2">Thinking…</div>}
         <div ref={endRef} />
       </div>
 
@@ -118,7 +117,7 @@ export default function AssistantChat({ step, length, date, order }: Props) {
           e.preventDefault();
           send(input);
         }}
-        className="flex gap-2 border-t border-stone-200 p-3"
+        className="flex gap-2 border-t border-white/60 p-3"
       >
         <input
           value={input}
@@ -126,13 +125,9 @@ export default function AssistantChat({ step, length, date, order }: Props) {
           maxLength={600}
           placeholder="Type your question"
           aria-label="Your question"
-          className="flex-1 rounded-xl border border-stone-300 px-3 py-2 text-sm"
+          className="neu-inset flex-1 px-3 py-2 text-sm"
         />
-        <button
-          type="submit"
-          disabled={busy || !input.trim()}
-          className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white disabled:bg-stone-300"
-        >
+        <button type="submit" disabled={busy || !input.trim()} className="btn-primary px-4 py-2 text-sm">
           Send
         </button>
       </form>

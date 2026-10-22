@@ -1,10 +1,9 @@
 "use client";
 
 import { billBreakdown, formatINR } from "@/lib/pricing";
-import type { Order, Slot } from "@/lib/types";
+import type { BookingLine } from "@/lib/types";
 import BillPanel from "./BillPanel";
 import DemoTakeSlotButton from "./DemoTakeSlotButton";
-import ShiftSummary from "./ShiftSummary";
 
 export type PayMethod = "upi" | "card" | "netbanking";
 
@@ -15,8 +14,7 @@ const METHODS: { id: PayMethod; label: string }[] = [
 ];
 
 interface Props {
-  order: Order;
-  slot: Slot;
+  lines: BookingLine[];
   method: PayMethod;
   onMethod: (m: PayMethod) => void;
   onPay: () => void;
@@ -24,39 +22,33 @@ interface Props {
   onDemoTake: () => void;
 }
 
-export default function PaymentPage({ order, slot, method, onMethod, onPay, onBack, onDemoTake }: Props) {
-  const bill = billBreakdown(order, slot.length);
+export default function PaymentPage({ lines, method, onMethod, onPay, onBack, onDemoTake }: Props) {
+  const bill = billBreakdown(lines);
   return (
     <section className="space-y-4">
-      <h2 className="text-lg font-semibold">Payment</h2>
-      <ShiftSummary slot={slot} />
-      <BillPanel order={order} length={slot.length} withGst title="Bill details" />
+      <h2 className="text-2xl font-black">Payment</h2>
+      <BillPanel lines={lines} withGst title="Bill details" />
 
-      <fieldset className="rounded-2xl border border-stone-200 bg-white p-4 shadow-sm">
-        <legend className="px-1 font-semibold">Pay using</legend>
+      <fieldset className="glass p-4">
+        <legend className="px-1 font-bold">Pay using</legend>
         <div className="space-y-2">
           {METHODS.map((m) => (
-            <label key={m.id} className="flex cursor-pointer items-center gap-3 rounded-lg border border-stone-200 p-3">
+            <label key={m.id} className={`flex cursor-pointer items-center gap-3 px-3 py-3 ${method === m.id ? "glass-dark" : "neu"}`}>
               <input type="radio" name="pay-method" checked={method === m.id} onChange={() => onMethod(m.id)} />
               {m.label}
             </label>
           ))}
         </div>
-        <p className="mt-3 text-xs text-stone-500">
-          Prototype: no real money moves and no card or UPI details are collected. You&apos;ll see a simulated bank
-          page next.
+        <p className="muted mt-3 text-xs">
+          Prototype: no real money moves and no card or UPI details are collected. You&apos;ll see a simulated bank page next.
         </p>
       </fieldset>
 
       <div className="flex gap-2">
-        <button type="button" onClick={onBack} className="rounded-xl border border-stone-300 px-4 py-3 font-medium">
+        <button type="button" onClick={onBack} className="btn-ghost px-4 py-3">
           Back
         </button>
-        <button
-          type="button"
-          onClick={onPay}
-          className="flex-1 rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white"
-        >
+        <button type="button" onClick={onPay} className="btn-primary flex-1 px-4 py-3">
           Pay {formatINR(bill.grandTotal)}
         </button>
       </div>

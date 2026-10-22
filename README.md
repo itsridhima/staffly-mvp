@@ -1,13 +1,13 @@
 # Staffly – shift booking prototype
 
-A hackathon MVP for Staffly: a café, restaurant or hotel manager books available, pre-onboarded frontline workers for a shift, Swiggy-style (add one or many workers of different roles, see a live bill, pay, get confirmation).
+A hackathon MVP for Staffly: a café, restaurant or hotel manager books available, pre-onboarded frontline workers for a shift. One booking can hold several roles, each with its **own date, shift length, start time and number of workers**, and each worker can be tracked like a parcel.
 
-> **This is a prototype.** Staffly has not been built yet. The workers, their availability, booking references, the payment page, the bank approval page and the confirmation are all **simulated demo data**. No real worker is booked or notified, no money moves, and no card or UPI details are collected. The 18% GST rate is a **placeholder** pending confirmation.
+> **This is a prototype.** Staffly has not been built yet. The workers, their availability, skill sets, contact numbers, reviews, ratings, booking references, tracking updates, the payment page, the bank approval page, the Staffly "confirmation calls" and in-app notifications are all **simulated demo data**. No real worker is booked or notified, no money moves, and no card or UPI details are collected. The 18% GST rate is a **placeholder** pending confirmation.
 
 ## Job to be done
 When a café, restaurant, or hotel needs frontline staff for an upcoming shift, I want to book an available worker from Staffly's pre-onboarded worker pool, so I can fill the shift without searching for a replacement myself.
 
-**Users:** café, restaurant and hotel owners or managers in India who need waiters/service staff or kitchen helpers (including dishwashing).
+**Users:** café, restaurant and hotel owners or managers in India who need service staff or kitchen helpers.
 
 ## The 3 tests the MVP must pass
 1. I select a role, choose a 5-hour or 8-hour shift, and select a date. In the booking flow I can see available slots with their prices and cannot select unavailable slots.
@@ -20,38 +20,42 @@ All three are covered by automated logic tests (`npm test`) and were also clicke
 **Current:** the manager needs staff for an upcoming shift and has to search for a replacement themselves.
 
 **Future (this prototype):**
-1. Choose a 5h or 8h shift and a date.
-2. Add workers from the menu (any mix of roles and quantities); the bill updates live.
-3. Type the start time; see nearby slots with prices, available or unavailable.
-4. Pick a slot, review, press Continue.
-5. Payment page shows the bill with GST; pay; simulated bank approval.
-6. Confirmation with a booking reference and a profile card for each assigned worker.
-7. If the slot is taken at any point, see a clear message and the nearest available start times instead.
+1. **Home:** pick a role from the categories (Waiter, Kitchen helper, Dishwasher, Food runner, Takeaway packer, Cleaner).
+2. **Role page:** read the overview and (sample) reviews, then **Book**: choose 5h or 8h, a date, a start time; see four nearby slots with prices, available or unavailable; pick a slot and the number of workers; **Add to booking**.
+3. Repeat for other roles, or the same role with a different shift. Each line keeps its own date, shift length and timing.
+4. **Review booking:** every role with its qty, date, shift, timing and price. **Continue** (login is required here).
+5. **Payment:** per-line breakdown, GST and grand total; pay; simulated bank approval.
+6. **Confirmation:** booking reference, a profile card per worker (skills, demo contact, tracking ID, shift), full bill.
+7. **Profile → My bookings:** each worker's tracking timeline: Booked → Confirmation check → On the way (or Replacement arranged) → On duty → Shift completed → Rate your experience. A replacement keeps the same tracking ID and cancels the original worker's booking.
+8. If a slot is taken at any point, a clear message names that item and offers the nearest available start times for it; nothing is charged and the other items stay unchanged.
 
 ## Architecture: Input → AI → Logic → Action → Output
 | Stage | What happens here |
 |---|---|
-| **Input** | Manager picks shift length, date, roles and quantities, and a start time (`components/`, `app/page.tsx`) |
-| **AI** | Optional **Staffly assistant** chat (Google Gemini) that answers questions about booking, prices and the current screen, with scripted answers as a fallback. It never books, prices or checks availability (see below) |
-| **Logic** | Plain code: pricing and GST (`lib/pricing.ts`), slot availability and nearest alternatives (`lib/availability.ts`), booking and worker assignment (`lib/booking.ts`) |
-| **Action** | Re-check availability at Continue, Pay and bank approval; assign specific workers; record the booking in the browser's `localStorage` |
-| **Output** | Slot list with prices, bill, payment page, confirmation with reference and worker cards, or the "slot taken" message with alternatives |
+| **Input** | Manager picks roles, shift lengths, dates, start times and quantities (`components/`, `app/page.tsx`); logs in with Google or an email code (Supabase) |
+| **AI** | Optional **Staffly assistant** chat (Google Gemini) that answers questions about booking, prices, tracking and the current screen, with scripted answers as a fallback. It never books, prices or checks availability |
+| **Logic** | Plain code: pricing and GST (`lib/pricing.ts`), availability and nearest alternatives (`lib/availability.ts`), all-or-nothing booking and worker assignment (`lib/booking.ts`), tracking and replacement (`lib/tracking.ts`) |
+| **Action** | Re-check availability at Continue, Pay and bank approval; assign workers; save the booking to the user's account (Supabase table with Row Level Security) |
+| **Output** | Slot lists with prices, bill, confirmation, My bookings with tracking, or the "slot taken" message with alternatives |
 
 ## Where AI is used, what stays human, and why
-- **AI is used in one place: the customer assistant** (chat bubble, bottom-right). It calls Google's Gemini API (free tier available) from a server route (`app/api/assistant/route.ts`), so the API key never reaches the browser. It is given only facts from this project (roles, prices before GST, the booking flow, the prototype caveats) plus a summary of the manager's current screen, and it is told to say "I don't have that information" instead of guessing. It can explain and guide; it **cannot** book, change the order or take payment.
-- **Everything else is ordinary code:** price lookup, sums, GST, checking time windows and picking free workers. Code does these instantly, for free and predictably, so a language model would only add cost and the chance of a wrong answer. The booking works without the assistant. If no API key is set, or the AI is unavailable, the chat falls back to scripted answers (`lib/faq.ts`) for common questions and says so.
-- **What stays human:** the manager decides which roles, how many people, and which slot to book. Staffly decisions that were not specified stay open: the real GST rate, real worker onboarding and availability, real payment provider, and any other fees.
-- **Why these tools:** Next.js (what you asked for; deploys to Vercel with no extra setup), TypeScript (catches mistakes early), Tailwind CSS (quick styling), Vitest (small automated tests for the booking logic). The booking state lives in the browser so no database or login is needed for the prototype.
+- **AI is used in one place: the customer assistant** (chat bubble). It calls Google's Gemini API (free tier available) from a server route (`app/api/assistant/route.ts`), so the API key never reaches the browser. It is given only facts from this project (roles, prices before GST, the flow, tracking, the prototype caveats) plus a summary of the manager's current booking, and it is told to say "I don't have that information" instead of guessing. It can explain and guide; it **cannot** book, change the booking or take payment.
+- **Everything else is ordinary code:** price lookup, sums, GST, time windows, picking free workers, tracking steps. Code does these instantly, for free and predictably, so a language model would only add cost and the chance of a wrong answer. The booking works without the assistant. If no key is set, or the AI is unavailable, the chat falls back to scripted answers (`lib/faq.ts`) and says so.
+- **What stays human:** the manager decides roles, quantities, shifts and which slot to book. Things Staffly hasn't specified stay open: the real GST rate, other fees, real worker onboarding and availability, real payments, real calls and notifications.
+- **Why these tools:** Next.js (deploys to Vercel with no extra setup), TypeScript (catches mistakes early), Tailwind CSS (quick styling), Vitest (tests for the booking logic), Supabase (login and per-user saved bookings without writing a server), Gemini (free-tier assistant).
 
 ## Failure cases and limits
-- **Slot taken before you confirm:** availability is re-checked on Continue, Pay and bank approval. If it fails, nothing is booked or charged and the nearest available start times that fit the whole order are shown (or a note to change date or crew if none fit).
-- **No second real user:** the "Simulate another manager booking this slot" button is a demo tool that stands in for one.
-- **Demo rule:** shifts starting at 2:00 PM always show as "Already booked (demo)" so the demo always has an unavailable slot (`DEMO_BLOCKED_START` in `lib/prototypeData.ts`).
-- **All-or-nothing orders:** if any role in your order can't be fully staffed, the whole slot is unavailable (no partial bookings).
-- **Bookings are local:** clearing browser data resets them; they are not shared between devices or people, so double-booking across users is not prevented.
-- **Times already passed** on today's date are unavailable; shifts can't run past midnight.
-- **Assistant failure cases:** with no key, a rejected key, the free-tier limit, our own rate limit (30 questions per 10 minutes per visitor, best-effort), a timeout or an outage, the chat falls back to scripted answers labelled "Quick answer", and the booking flow is unaffected. It can still misunderstand a question, so it is limited to stated facts and labelled as a prototype helper. It does not know cancellation/refund rules, worker verification details, cities served, support contacts or other fees, because none were specified, and it says so.
-- **Not covered:** real payments, notifications, login, taxes beyond the placeholder GST, other fees, permanent hiring, and 10-hour shifts.
+- **Slot taken before you confirm:** every line is re-checked on Continue, Pay and bank approval. If any item fails, nothing is booked or charged, and the failing item gets the nearest alternatives. Booking is all-or-nothing across the whole order.
+- **Two lines, same role:** lines in the same booking can't use the same worker at overlapping times.
+- **No second real user:** the "Simulate another manager booking" button is a demo tool that stands in for one.
+- **Demo rule:** shifts starting at 2:00 PM always show as "Already booked (demo)" so there is always one unavailable slot (`DEMO_BLOCKED_START` in `lib/prototypeData.ts`).
+- **Replacement needs a free worker:** the demo pool is small, so a replacement may not exist for some shifts; tracking then says so instead of inventing one.
+- **Tracking is simulated:** the "Demo controls" buttons stand in for the real confirmation call, the worker's reply and the shift itself.
+- **Login:** Google and email code (one-time code or magic link). **Mobile-number OTP is not included** because Supabase needs a paid SMS provider for it. Supabase's built-in email sender allows only a few emails per hour, which is fine for a demo but not for real use.
+- **If Supabase isn't set up:** login is unavailable; the app falls back to a guest mode that saves bookings in this browser only.
+- **Availability across devices:** the worker pool is fictional, so availability is rebuilt from the signed-in user's own saved bookings, not shared between different users.
+- **Assistant:** with no key, a rejected key, the free-tier limit, our rate limit (30 questions per 10 minutes per visitor, best-effort), a timeout or an outage, the chat falls back to scripted answers labelled "Quick answer". It does not know cancellation/refund rules, worker verification, cities served, support contacts or other fees, because none were specified, and it says so.
+- **Not covered:** real payments, real calls or notifications, mobile OTP login, taxes beyond the placeholder GST, other fees, permanent hiring, 10-hour shifts, a Chef role (no price was given).
 
 ## Run it locally
 You need Node.js (LTS) installed.
@@ -62,19 +66,30 @@ npm run dev
 ```
 Then open http://localhost:3000.
 
-**Optional: turn on the AI assistant.** Get a free key at https://aistudio.google.com/apikey, copy `.env.example` to `.env.local`, add your own `GEMINI_API_KEY=...`, and restart `npm run dev`. Without a key the booking still works and the chat gives scripted answers.
-
 ```bash
-npm test        # logic tests for the 3 scenarios
+npm test        # logic tests (pricing, availability, booking, tracking, assistant)
 npm run build   # production build (what Vercel runs)
 ```
 
+### Optional: turn on the AI assistant
+Get a free key at https://aistudio.google.com/apikey, copy `.env.example` to `.env.local`, add your own `GEMINI_API_KEY=...`, and restart `npm run dev`.
+
+### Optional: turn on login and saved bookings (Supabase)
+1. Create a free project at https://supabase.com.
+2. In the SQL Editor run `supabase/schema.sql` (creates the `bookings` table with Row Level Security so users only see their own rows).
+3. Project Settings → API: copy the **Project URL** and the **anon / publishable** key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (these two are public by design). **Never** use the `service_role` key in this app.
+4. Authentication → URL Configuration: set the Site URL and add Redirect URLs for `http://localhost:3000/**` and your Vercel domain.
+5. Email: for a 6-digit code, edit Authentication → Email Templates → Magic Link to include `{{ .Token }}`.
+6. Google: create an OAuth client (Web application) in Google Cloud, add Supabase's callback URL as an authorized redirect URI, then paste the Client ID and secret into Authentication → Providers → Google.
+7. Restart `npm run dev`. On Vercel, add the same variables under Environment Variables and redeploy.
+
 ## Project layout
-- `app/page.tsx` – the single screen and its step flow
-- `components/` – role menu, slot list, bill, payment page, simulated bank page, confirmation, worker card
-- `lib/prototypeData.ts` – roles, price table (before GST), fictional workers
-- `lib/pricing.ts`, `lib/availability.ts`, `lib/booking.ts` – the logic
-- `lib/staffly.test.ts` – tests for the 3 scenarios
+- `app/page.tsx` – the single page and its view flow (home → role → booking → payment → confirmation, profile, tracking)
+- `components/` – home, role page and booking, cart, payment, bank page, confirmation, worker card, tracking timeline, rating, login, chat assistant, bottom navigation
+- `lib/prototypeData.ts` – roles, price table (before GST), role overviews, sample reviews, fictional workers
+- `lib/pricing.ts`, `lib/availability.ts`, `lib/booking.ts`, `lib/tracking.ts`, `lib/ledger.ts` – the logic
+- `lib/supabaseClient.ts`, `components/AuthProvider.tsx`, `components/useBookings.ts`, `supabase/schema.sql` – login and saved bookings
+- `lib/staffly.test.ts` and friends – tests
 
 ## Secrets
-The assistant's `GEMINI_API_KEY` lives only in `.env.local` (git-ignored) and is read on the server. `.env` and `.env*.local` are in `.gitignore`; `.env.example` has no real key. If deploying to Vercel, add the key in the project's Environment Variables settings instead.
+`GEMINI_API_KEY` lives only in `.env.local` (git-ignored) and is read on the server. The two Supabase values are public by design; security comes from Row Level Security. `.env` and `.env*.local` are in `.gitignore`, and `.env.example` contains no real values. On Vercel, add keys under Environment Variables, never in the code.

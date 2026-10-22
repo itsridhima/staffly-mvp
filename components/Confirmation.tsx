@@ -3,51 +3,57 @@
 import { ROLES } from "@/lib/prototypeData";
 import type { Booking } from "@/lib/types";
 import BillPanel from "./BillPanel";
-import ShiftSummary from "./ShiftSummary";
 import WorkerCard from "./WorkerCard";
 
-export default function Confirmation({ booking, onReset }: { booking: Booking; onReset: () => void }) {
+interface Props {
+  booking: Booking;
+  saveError: string | null;
+  onViewBookings: () => void;
+  onReset: () => void;
+}
+
+export default function Confirmation({ booking, saveError, onViewBookings, onReset }: Props) {
   return (
     <section className="space-y-4">
-      <div className="rounded-2xl bg-emerald-600 p-5 text-white">
-        <p className="text-sm font-medium">Booking confirmed</p>
-        <p className="text-2xl font-bold tracking-wide" data-testid="booking-reference">
+      <div className="glass-dark p-5">
+        <p className="text-sm font-medium text-sky-200">Booking confirmed</p>
+        <p className="text-3xl font-black tracking-wide" data-testid="booking-reference">
           {booking.reference}
         </p>
-        <p className="mt-1 text-sm opacity-90">
-          Prototype booking: no real payment was taken and no real worker has been notified.
+        <p className="mt-2 text-sm text-sky-100">
+          Prototype booking: no real payment was taken and no real worker has been notified. Track each worker under Profile → My bookings.
         </p>
       </div>
 
-      <ShiftSummary slot={booking.slot} />
+      {saveError && <p role="alert" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{saveError}</p>}
 
       <div className="space-y-3">
-        <h2 className="text-lg font-semibold">Your workers</h2>
+        <h2 className="text-lg font-bold">Your workers</h2>
         {ROLES.map((role) => {
           const group = booking.workers.filter((w) => w.role === role.id);
           if (group.length === 0) return null;
           return (
-            <div key={role.id}>
-              <h3 className="mb-1 text-sm font-semibold text-stone-700">{role.label}</h3>
-              <div className="space-y-2">
-                {group.map((w) => (
-                  <WorkerCard key={w.worker.id} worker={w.worker} />
-                ))}
-              </div>
+            <div key={role.id} className="space-y-2">
+              <h3 className="text-sm font-semibold text-slate-600">{role.label}</h3>
+              {group.map((tw) => {
+                const line = booking.lines.find((l) => l.id === tw.lineId);
+                return line ? <WorkerCard key={tw.trackingId} tracked={tw} line={line} /> : null;
+              })}
             </div>
           );
         })}
       </div>
 
-      <BillPanel order={booking.order} length={booking.slot.length} withGst title="Bill" />
+      <BillPanel lines={booking.lines} withGst title="Bill" />
 
-      <button
-        type="button"
-        onClick={onReset}
-        className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white"
-      >
-        Book another shift
-      </button>
+      <div className="flex gap-2">
+        <button type="button" onClick={onViewBookings} className="btn-ghost px-4 py-3">
+          My bookings
+        </button>
+        <button type="button" onClick={onReset} className="btn-primary flex-1 px-4 py-3">
+          Book another shift
+        </button>
+      </div>
     </section>
   );
 }

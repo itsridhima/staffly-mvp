@@ -1,243 +1,369 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import AssistantChat from "@/components/AssistantChat";
-import BillPanel from "@/components/BillPanel";
+import { useAuth } from "@/components/AuthProvider";
+import BookingDetail from "@/components/BookingDetail";
+import BottomNav, { type NavTarget } from "@/components/BottomNav";
+import CartView from "@/components/CartView";
 import Confirmation from "@/components/Confirmation";
+import HomeView from "@/components/HomeView";
+import LoginScreen from "@/components/LoginScreen";
+import NotificationsView from "@/components/NotificationsView";
 import PaymentPage, { type PayMethod } from "@/components/PaymentPage";
+import ProfileView from "@/components/ProfileView";
 import PrototypeBanner from "@/components/PrototypeBanner";
-import ReviewPanel from "@/components/ReviewPanel";
-import RoleMenu from "@/components/RoleMenu";
-import ShiftBasics from "@/components/ShiftBasics";
+import RoleView from "@/components/RoleView";
 import SimulatedBankPage from "@/components/SimulatedBankPage";
-import StartTimeAndSlots from "@/components/StartTimeAndSlots";
 import UnavailableNotice from "@/components/UnavailableNotice";
-import { canStaff, findNearestAlternatives, getSlots, type SlotOption } from "@/lib/availability";
-import { confirmBooking, simulateOtherBooking } from "@/lib/booking";
-import { orderHeadcount } from "@/lib/pricing";
-import { maxQuantity } from "@/lib/prototypeData";
-import { addDays, parseTime, toDateString } from "@/lib/time";
-import type { Booking, Ledger, Order, RoleId, ShiftLength, Slot } from "@/lib/types";
+import { useBookings } from "@/components/useBookings";
+import { assignLines, findNearestAlternatives, type SlotOption } from "@/lib/availability";
+import { confirmBooking, makeLineId, simulateOtherBooking } from "@/lib/booking";
+import { ledgerFromBookings } from "@/lib/ledger";
+import { KEYS, readLocal, writeLocal } from "@/lib/localStore";
+import { deriveNotifications } from "@/lib/notifications";
+import { headcount } from "@/lib/pricing";
+import { roleInfo } from "@/lib/prototypeData";
+import { toDateString } from "@/lib/time";
+import { applyAction, rateWorker, type TrackingAction } from "@/lib/tracking";
+import type { Booking, BookingLine, LedgerEntry, LineSpec, RoleId } from "@/lib/types";
 
-type Step = "build" | "review" | "payment" | "bank" | "confirmed" | "taken";
+type View =
+  | "home"
+  | "role"
+  | "cart"
+  | "login"
+  | "payment"
+  | "bank"
+  | "taken"
+  | "confirmed"
+  | "profile"
+  | "booking"
+  | "notifications";
 
-const LEDGER_KEY = "staffly-prototype-ledger";
+const PENDING_CHECKOUT = "staffly-pending-checkout";
+
+const NAV_FOR_VIEW: Record<View, NavTarget | null> = {
+  home: "home",
+  role: "home",
+  notifications: "home",
+  cart: "cart",
+  login: "cart",
+  payment: "cart",
+  bank: "cart",
+  taken: "cart",
+  profile: "profile",
+  booking: "profile",
+  confirmed: null,
+};
 
 export default function Home() {
+  const { configured, user, ready } = useAuth();
+  const { bookings, loading, error: bookingsError, addBooking, updateBooking } = useBookings(user, ready);
+
   const [today, setToday] = useState<string | null>(null);
-  const [ledger, setLedger] = useState<Ledger>([]);
+  const [loaded, setLoaded] = useState(false);
 
-  const [length, setLength] = useState<ShiftLength>(5);
-  const [date, setDate] = useState("");
-  const [order, setOrder] = useState<Order>({});
-  const [startTime, setStartTime] = useState("12:00");
-  const [shownStart, setShownStart] = useState<number | null>(null);
-  const [selectedStart, setSelectedStart] = useState<number | null>(null);
-
-  const [step, setStep] = useState<Step>("build");
+  const [view, setView] = useState<View>("home");
+  const [roleId, setRoleId] = useState<RoleId>("waiter");
+  const [cart, setCart] = useState<BookingLine[]>([]);
+  const [demoEntries, setDemoEntries] = useState<LedgerEntry[]>([]);
   const [method, setMethod] = useState<PayMethod>("upi");
-  const [booking, setBooking] = useState<Booking | null>(null);
-  const [takenReason, setTakenReason] = useState("");
-  const [alternatives, setAlternatives] = useState<SlotOption[]>([]);
+  const [taken, setTaken] = useState<{ lineId: string; reason: string; alternatives: SlotOption[] } | null>(null);
+  const [confirmed, setConfirmed] = useState<Booking | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [selectedRef, setSelectedRef] = useState<string | null>(null);
+  const [bookingNotice, setBookingNotice] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const [loginNote, setLoginNote] = useState<string | null>(null);
+  const [seenAt, setSeenAt] = useState("");
 
-  // Load "today" and the prototype ledger once, on the client only.
+  // Load client-only state once (today's date, saved cart, demo entries).
   useEffect(() => {
-    const t = toDateString(new Date());
-    setToday(t);
-    setDate(addDays(t, 1)); // default to tomorrow so the demo isn't affected by today's clock
-    try {
-      const saved = localStorage.getItem(LEDGER_KEY);
-      if (saved) setLedger(JSON.parse(saved) as Ledger);
-    } catch {
-      /* storage unavailable: start with an empty ledger */
-    }
+    setToday(toDateString(new Date()));
+    setCart(readLocal<BookingLine[]>(KEYS.cart, []));
+    setDemoEntries(readLocal<LedgerEntry[]>(KEYS.demoLedger, []));
+    setSeenAt(readLocal<string>(KEYS.notificationsSeen, ""));
+    setLoaded(true);
   }, []);
 
-  function saveLedger(next: Ledger) {
-    setLedger(next);
-    try {
-      localStorage.setItem(LEDGER_KEY, JSON.stringify(next));
-    } catch {
-      /* ignore */
+  useEffect(() => {
+    if (loaded) writeLocal(KEYS.cart, cart);
+  }, [cart, loaded]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // Everyone's booked workers: the user's saved bookings plus demo entries.
+  const ledger = useMemo(() => ledgerFromBookings(bookings, demoEntries), [bookings, demoEntries]);
+
+  const notifications = useMemo(() => deriveNotifications(bookings), [bookings]);
+  const unseen = notifications.filter((n) => n.at > seenAt).length;
+
+  const go = useCallback((next: View) => {
+    setView(next);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }, []);
+
+  /** Slot taken: name the line, offer the nearest alternatives for that line only. */
+  const goTaken = useCallback(
+    (lineId: string, reason: string) => {
+      const line = cart.find((l) => l.id === lineId);
+      if (!line) return;
+      const others = cart.filter((l) => l.id !== lineId);
+      setTaken({
+        lineId,
+        reason,
+        alternatives: findNearestAlternatives(line, ledger, new Date(), others),
+      });
+      go("taken");
+    },
+    [cart, ledger, go],
+  );
+
+  /** Re-check every line right now; if all are still free, move on. */
+  const advanceIfStillFree = useCallback(
+    (next: View) => {
+      const result = assignLines(cart, ledger, new Date());
+      if (result.ok) go(next);
+      else goTaken(result.lineId, result.reason);
+    },
+    [cart, ledger, go, goTaken],
+  );
+
+  // Remember that we were on the way to checkout (Google login leaves the page and comes back).
+  useEffect(() => {
+    if (view === "login") writeLocal(PENDING_CHECKOUT, true);
+  }, [view]);
+
+  // After an email-code login (no page reload): carry on to payment.
+  useEffect(() => {
+    if (user && view === "login" && headcount(cart) > 0) {
+      writeLocal(PENDING_CHECKOUT, false);
+      advanceIfStillFree("payment");
     }
-  }
+  }, [user, view, cart, advanceIfStillFree]);
 
-  const slot: Slot | null = selectedStart === null ? null : { date, startMinutes: selectedStart, length };
-
-  const slotOptions = useMemo<SlotOption[] | null>(() => {
-    if (shownStart === null || orderHeadcount(order) === 0) return null;
-    return getSlots(order, length, date, shownStart, ledger, new Date());
-  }, [shownStart, order, length, date, ledger]);
-
-  function resetSlots() {
-    setShownStart(null);
-    setSelectedStart(null);
-  }
-
-  function changeLength(l: ShiftLength) {
-    setLength(l);
-    resetSlots();
-  }
-
-  function changeDate(d: string) {
-    setDate(d);
-    resetSlots();
-  }
-
-  function changeQty(role: RoleId, qty: number) {
-    const clamped = Math.max(0, Math.min(qty, maxQuantity(role)));
-    setOrder((prev) => {
-      const next = { ...prev };
-      if (clamped === 0) delete next[role];
-      else next[role] = clamped;
-      return next;
-    });
-    resetSlots();
-  }
-
-  const requestedStart = parseTime(startTime);
-
-  function showSlots() {
-    if (Number.isNaN(requestedStart)) return;
-    setShownStart(requestedStart);
-    setSelectedStart(null);
-  }
-
-  function selectSlot(startMinutes: number) {
-    setSelectedStart(startMinutes);
-    setStep("review");
-  }
-
-  /** Re-check the slot right now; if it's gone, show the "taken" screen with alternatives. */
-  function goTaken(forSlot: Slot, reason: string, ledgerNow: Ledger = ledger) {
-    setTakenReason(reason);
-    setAlternatives(findNearestAlternatives(order, forSlot.length, forSlot.date, forSlot.startMinutes, ledgerNow, new Date()));
-    setStep("taken");
-  }
-
-  function advanceIfStillFree(next: Step) {
-    if (!slot) return;
-    const result = canStaff(order, slot, ledger, new Date());
-    if (result.ok) setStep(next);
-    else goTaken(slot, result.reason);
-  }
-
-  function approvePayment() {
-    if (!slot) return;
-    const result = confirmBooking(order, slot, ledger, new Date());
-    if (result.ok) {
-      saveLedger(result.ledger);
-      setBooking(result.booking);
-      setStep("confirmed");
-    } else {
-      goTaken(slot, result.reason);
+  // After a Google login (page reloaded): return to the booking, ready to continue.
+  useEffect(() => {
+    if (!ready || !loaded || !user) return;
+    if (readLocal<boolean>(PENDING_CHECKOUT, false)) {
+      writeLocal(PENDING_CHECKOUT, false);
+      setLoginNote("You're signed in. Press Continue to go to payment.");
+      go("cart");
     }
+  }, [ready, loaded, user, go]);
+
+  function handleContinue() {
+    if (headcount(cart) === 0) return;
+    if (configured && !user) {
+      go("login");
+      return;
+    }
+    advanceIfStillFree("payment");
   }
 
-  function demoTakeSlot() {
-    if (!slot) return;
-    saveLedger(simulateOtherBooking(order, slot, ledger));
+  async function approvePayment() {
+    const result = confirmBooking(cart, ledger, new Date());
+    if (!result.ok) {
+      goTaken(result.lineId, result.reason);
+      return;
+    }
+    setConfirmed(result.booking);
+    setCart([]);
+    setSaveError(null);
+    go("confirmed");
+    const err = await addBooking(result.booking);
+    if (err) setSaveError("Your booking was confirmed on screen but could not be saved to your account. Please screenshot your reference and try again later.");
   }
 
-  function resetAll() {
-    setOrder({});
-    setBooking(null);
-    resetSlots();
-    setStep("build");
+  function addLine(spec: LineSpec) {
+    setCart((prev) => [...prev, { ...spec, id: makeLineId() }]);
+    setToast(`Added ${spec.qty} × ${roleInfo(spec.role).label} to your booking`);
+    go("home");
   }
 
-  if (today === null) {
+  function changeLineStart(startMinutes: number) {
+    if (!taken) return;
+    setCart((prev) => prev.map((l) => (l.id === taken.lineId ? { ...l, startMinutes } : l)));
+    setTaken(null);
+    go("cart");
+  }
+
+  function demoTake() {
+    if (cart.length === 0) return;
+    const entries = simulateOtherBooking(cart[0], ledger);
+    const next = [...demoEntries, ...entries];
+    setDemoEntries(next);
+    writeLocal(KEYS.demoLedger, next);
+  }
+
+  async function onTrackingAction(trackingId: string, action: TrackingAction) {
+    const booking = bookings.find((b) => b.workers.some((w) => w.trackingId === trackingId));
+    if (!booking) return;
+    const result = applyAction(booking, trackingId, action, new Date(), { allBookings: bookings, demoEntries });
+    if (!result.ok) {
+      setBookingNotice(result.reason);
+      return;
+    }
+    setBookingNotice(
+      action === "cannot_come"
+        ? `Replacement arranged for ${trackingId}. Your booking was updated and you've been notified in the app (simulated).`
+        : null,
+    );
+    await updateBooking(result.booking);
+  }
+
+  async function onRate(trackingId: string, stars: number, note: string) {
+    const booking = bookings.find((b) => b.workers.some((w) => w.trackingId === trackingId));
+    if (!booking) return;
+    const result = rateWorker(booking, trackingId, stars, note, new Date());
+    if (!result.ok) {
+      setBookingNotice(result.reason);
+      return;
+    }
+    setBookingNotice("Thanks for your rating!");
+    await updateBooking(result.booking);
+  }
+
+  function openBooking(reference: string) {
+    setSelectedRef(reference);
+    setBookingNotice(null);
+    go("booking");
+  }
+
+  function openNotifications() {
+    const now = new Date().toISOString();
+    setSeenAt(now);
+    writeLocal(KEYS.notificationsSeen, now);
+    go("notifications");
+  }
+
+  function onNavigate(target: NavTarget) {
+    setLoginNote(null);
+    go(target === "cart" ? "cart" : target);
+  }
+
+  if (today === null || !loaded) {
     return (
       <>
         <PrototypeBanner />
-        <main className="mx-auto max-w-xl p-4 text-stone-500">Loading…</main>
+        <main className="mx-auto max-w-lg p-6 muted">Loading…</main>
       </>
     );
   }
 
-  const hasWorkers = orderHeadcount(order) > 0;
+  const greetingName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? null;
+  const selectedBooking = bookings.find((b) => b.reference === selectedRef) ?? null;
+  const takenLine = taken ? cart.find((l) => l.id === taken.lineId) : undefined;
+  const hideNav = view === "payment" || view === "bank";
 
   return (
     <>
       <PrototypeBanner />
-      <main className="mx-auto max-w-xl space-y-4 p-4 pb-8">
-        <header>
-          <h1 className="text-2xl font-bold">Staffly</h1>
-          <p className="text-stone-600">Book trained frontline staff for your next shift.</p>
-        </header>
-
-        {step === "build" && (
-          <>
-            <ShiftBasics length={length} date={date} today={today} onLength={changeLength} onDate={changeDate} />
-            <RoleMenu order={order} length={length} onChange={changeQty} />
-            <StartTimeAndSlots
-              startTime={startTime}
-              onStartTime={(v) => {
-                setStartTime(v);
-                resetSlots();
-              }}
-              onShowSlots={showSlots}
-              canShow={hasWorkers}
-              timeInvalid={Number.isNaN(requestedStart)}
-              slots={slotOptions}
-              length={length}
-              onSelect={selectSlot}
-            />
-            <div className="sticky bottom-2">
-              <BillPanel order={order} length={length} />
-            </div>
-          </>
+      <main className="mx-auto max-w-lg space-y-4 px-4 pb-32 pt-5">
+        {toast && (
+          <div role="status" className="glass-dark fixed left-1/2 top-12 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 px-4 py-3 text-sm font-semibold">
+            ✓ {toast}
+          </div>
         )}
 
-        {step === "review" && slot && (
-          <ReviewPanel
-            order={order}
-            slot={slot}
-            onBack={() => setStep("build")}
-            onContinue={() => advanceIfStillFree("payment")}
-            onDemoTake={demoTakeSlot}
+        {view === "home" && (
+          <HomeView
+            lines={cart}
+            greetingName={greetingName}
+            notificationCount={unseen}
+            onOpenRole={(r) => {
+              setRoleId(r);
+              go("role");
+            }}
+            onOpenCart={() => go("cart")}
+            onOpenNotifications={openNotifications}
           />
         )}
 
-        {step === "payment" && slot && (
-          <PaymentPage
-            order={order}
-            slot={slot}
-            method={method}
-            onMethod={setMethod}
-            onBack={() => setStep("review")}
-            onPay={() => advanceIfStillFree("bank")}
-            onDemoTake={demoTakeSlot}
+        {view === "role" && (
+          <RoleView
+            key={roleId}
+            role={roleId}
+            today={today}
+            cart={cart}
+            ledger={ledger}
+            onBack={() => go("home")}
+            onAdd={addLine}
           />
         )}
 
-        {step === "bank" && slot && (
-          <SimulatedBankPage
-            order={order}
-            length={slot.length}
-            onApprove={approvePayment}
-            onDecline={() => setStep("payment")}
-            onDemoTake={demoTakeSlot}
+        {view === "cart" && (
+          <CartView
+            lines={cart}
+            loginNote={loginNote}
+            onRemove={(id) => setCart((prev) => prev.filter((l) => l.id !== id))}
+            onAddAnother={() => go("home")}
+            onContinue={handleContinue}
+            onDemoTake={demoTake}
           />
         )}
 
-        {step === "taken" && slot && (
+        {view === "login" && <LoginScreen reason="Log in to continue to payment. Your booking is saved." onCancel={() => go("cart")} />}
+
+        {view === "payment" && (
+          <PaymentPage lines={cart} method={method} onMethod={setMethod} onBack={() => go("cart")} onPay={() => advanceIfStillFree("bank")} onDemoTake={demoTake} />
+        )}
+
+        {view === "bank" && (
+          <SimulatedBankPage lines={cart} onApprove={approvePayment} onDecline={() => go("payment")} onDemoTake={demoTake} />
+        )}
+
+        {view === "taken" && taken && takenLine && (
           <UnavailableNotice
-            reason={takenReason}
-            takenStart={slot.startMinutes}
-            length={slot.length}
-            alternatives={alternatives}
-            onSelectAlternative={selectSlot}
-            onChangeOrder={() => {
-              resetSlots();
-              setStep("build");
+            line={takenLine}
+            reason={taken.reason}
+            alternatives={taken.alternatives}
+            onSelectAlternative={changeLineStart}
+            onBackToBooking={() => go("cart")}
+          />
+        )}
+
+        {view === "confirmed" && confirmed && (
+          <Confirmation
+            booking={confirmed}
+            saveError={saveError}
+            onViewBookings={() => {
+              setSelectedRef(confirmed.reference);
+              go("booking");
+            }}
+            onReset={() => {
+              setConfirmed(null);
+              go("home");
             }}
           />
         )}
 
-        {step === "confirmed" && booking && <Confirmation booking={booking} onReset={resetAll} />}
+        {view === "profile" && (
+          <ProfileView bookings={bookings} loading={loading} error={bookingsError} onOpenBooking={openBooking} onLogin={() => go("login")} />
+        )}
+
+        {view === "booking" && selectedBooking && (
+          <BookingDetail
+            booking={selectedBooking}
+            notice={bookingNotice}
+            onBack={() => go("profile")}
+            onAction={onTrackingAction}
+            onRate={onRate}
+          />
+        )}
+
+        {view === "notifications" && (
+          <NotificationsView items={notifications} onOpen={openBooking} onBack={() => go("home")} />
+        )}
       </main>
-      <AssistantChat step={step} length={length} date={date} order={order} />
+
+      {!hideNav && <BottomNav active={NAV_FOR_VIEW[view]} cartCount={headcount(cart)} onNavigate={onNavigate} />}
+      <AssistantChat view={view} lines={cart} />
     </>
   );
 }

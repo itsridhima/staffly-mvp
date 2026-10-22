@@ -1,12 +1,11 @@
-import { canStaff } from "./availability";
+import { assignLines, isWorkerFree } from "./availability";
 import { billBreakdown } from "./pricing";
-import { ROLES, WORKERS } from "./prototypeData";
-import { isWorkerFree } from "./availability";
-import type { BookedWorker, Booking, Ledger, LedgerEntry, Order, Slot, Worker } from "./types";
+import { WORKERS } from "./prototypeData";
+import type { Booking, BookingLine, Ledger, LedgerEntry, LineSpec, TrackedWorker, Worker } from "./types";
 
 export type ConfirmResult =
-  | { ok: true; booking: Booking; ledger: Ledger }
-  | { ok: false; error: "slot_taken"; reason: string };
+  | { ok: true; booking: Booking }
+  | { ok: false; error: "slot_taken"; lineId: string; reason: string };
 
 // No look-alike characters (0/O, 1/I)
 const REF_CHARS = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
@@ -18,69 +17,59 @@ export function makeReference(rng: () => number = Math.random): string {
   return `STF-${out}`;
 }
 
+export function makeLineId(rng: () => number = Math.random): string {
+  return `L${Math.floor(rng() * 1e9).toString(36)}${Date.now().toString(36)}`;
+}
+
 /**
- * Re-checks availability, then assigns specific workers and records them in the ledger.
- * If the slot is no longer available, nothing is booked and the ledger is untouched.
+ * Re-checks availability for every line, then assigns specific workers.
+ * All-or-nothing: if any line can no longer be staffed, nothing is booked and that line is reported.
+ * `ledger` = everything that is already booked (not including these lines).
  */
 export function confirmBooking(
-  order: Order,
-  slot: Slot,
+  lines: BookingLine[],
   ledger: Ledger,
   now: Date,
   workers: Worker[] = WORKERS,
   rng: () => number = Math.random,
 ): ConfirmResult {
-  const result = canStaff(order, slot, ledger, now, workers);
-  if (!result.ok) return { ok: false, error: "slot_taken", reason: result.reason };
+  const result = assignLines(lines, ledger, now, workers);
+  if (!result.ok) return { ok: false, error: "slot_taken", lineId: result.lineId, reason: result.reason };
 
-  const booked: BookedWorker[] = [];
-  const entries: LedgerEntry[] = [];
-  for (const role of ROLES) {
-    for (const worker of result.assignments[role.id] ?? []) {
-      booked.push({ role: role.id, worker });
-      entries.push({
-        workerId: worker.id,
-        date: slot.date,
-        startMinutes: slot.startMinutes,
-        endMinutes: slot.startMinutes + slot.length * 60,
-        source: "booking",
+  const reference = makeReference(rng);
+  const createdAt = now.toISOString();
+  const tracked: TrackedWorker[] = [];
+  for (const line of lines) {
+    for (const worker of result.assignments[line.id] ?? []) {
+      tracked.push({
+        trackingId: `TRK-${reference.slice(4)}-${tracked.length + 1}`,
+        lineId: line.id,
+        role: line.role,
+        worker,
+        status: "booked",
+        history: [{ status: "booked", at: createdAt, note: `${worker.name} assigned` }],
+        replaced: [],
       });
     }
   }
 
-  return {
-    ok: true,
-    booking: { reference: makeReference(rng), slot, order, workers: booked, bill: billBreakdown(order, slot.length) },
-    ledger: [...ledger, ...entries],
-  };
+  return { ok: true, booking: { reference, createdAt, lines, workers: tracked, bill: billBreakdown(lines) } };
 }
 
 /**
  * DEMO TOOL ONLY: pretends another manager booked workers first.
- * It books out just enough free workers of the order's scarcest role so this slot
- * can no longer be staffed. (Staffly has no real second user yet.)
+ * Returns ledger entries that book out just enough free workers of this line's role so the
+ * slot can no longer be staffed. (Staffly has no real second user yet.)
  */
-export function simulateOtherBooking(
-  order: Order,
-  slot: Slot,
-  ledger: Ledger,
-  workers: Worker[] = WORKERS,
-): Ledger {
-  let target: { workers: Worker[]; need: number } | null = null;
-  for (const role of ROLES) {
-    const need = order[role.id] ?? 0;
-    if (need <= 0) continue;
-    const free = workers.filter((w) => w.role === role.id && isWorkerFree(w, slot, ledger));
-    if (!target || free.length - need < target.workers.length - target.need) target = { workers: free, need };
-  }
-  if (!target) return ledger;
-  const count = Math.max(0, target.workers.length - target.need + 1);
-  const entries: LedgerEntry[] = target.workers.slice(0, count).map((w) => ({
+export function simulateOtherBooking(line: LineSpec, ledger: Ledger, workers: Worker[] = WORKERS): LedgerEntry[] {
+  const free = workers.filter((w) => w.role === line.role && isWorkerFree(w, line, ledger));
+  const count = free.length - line.qty + 1;
+  if (count <= 0) return [];
+  return free.slice(0, count).map((w) => ({
     workerId: w.id,
-    date: slot.date,
-    startMinutes: slot.startMinutes,
-    endMinutes: slot.startMinutes + slot.length * 60,
-    source: "demo",
+    date: line.date,
+    startMinutes: line.startMinutes,
+    endMinutes: line.startMinutes + line.length * 60,
+    source: "demo" as const,
   }));
-  return [...ledger, ...entries];
 }

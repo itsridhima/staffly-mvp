@@ -31,8 +31,17 @@ describe("scripted FAQ fallback", () => {
     }
   });
 
-  it("totals the current order with GST", () => {
-    const ctx = sanitizeContext({ length: 5, order: { kitchen_helper: 2, waiter: 1 } });
+  it("explains tracking", () => {
+    expect(faqAnswer("how does tracking work?", empty)).toMatch(/Replacement arranged/);
+  });
+
+  it("totals the current booking with GST", () => {
+    const ctx = sanitizeContext({
+      lines: [
+        { role: "kitchen_helper", qty: 2, length: 5, date: "2026-10-26", startMinutes: 720 },
+        { role: "waiter", qty: 1, length: 5, date: "2026-10-26", startMinutes: 720 },
+      ],
+    });
     expect(faqAnswer("what is my total?", ctx)).toContain("₹2,372");
   });
 });

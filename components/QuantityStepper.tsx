@@ -3,34 +3,24 @@
 interface Props {
   label: string;
   value: number;
+  min?: number;
   max: number;
   onChange: (v: number) => void;
 }
 
-export default function QuantityStepper({ label, value, max, onChange }: Props) {
-  if (value === 0) {
-    return (
-      <button
-        type="button"
-        onClick={() => onChange(1)}
-        aria-label={`Add ${label}`}
-        className="rounded-lg border border-emerald-600 px-5 py-1.5 text-sm font-bold text-emerald-700 hover:bg-emerald-50"
-      >
-        ADD
-      </button>
-    );
-  }
+export default function QuantityStepper({ label, value, min = 1, max, onChange }: Props) {
   return (
-    <div className="flex items-center rounded-lg bg-emerald-600 text-white">
+    <div className="neu-inset inline-flex items-center gap-1 p-1">
       <button
         type="button"
         onClick={() => onChange(value - 1)}
+        disabled={value <= min}
         aria-label={`Remove one ${label}`}
-        className="px-3 py-1.5 text-lg font-bold"
+        className="neu flex h-10 w-10 items-center justify-center text-xl font-bold text-blue-700 disabled:opacity-40"
       >
         –
       </button>
-      <span className="min-w-6 text-center text-sm font-bold" aria-live="polite">
+      <span className="min-w-10 text-center text-lg font-bold" aria-live="polite" aria-label={`${value} ${label}`}>
         {value}
       </span>
       <button
@@ -38,7 +28,7 @@ export default function QuantityStepper({ label, value, max, onChange }: Props) 
         onClick={() => onChange(value + 1)}
         disabled={value >= max}
         aria-label={`Add one more ${label}`}
-        className="px-3 py-1.5 text-lg font-bold disabled:opacity-40"
+        className="neu flex h-10 w-10 items-center justify-center text-xl font-bold text-blue-700 disabled:opacity-40"
       >
         +
       </button>

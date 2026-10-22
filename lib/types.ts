@@ -8,9 +8,6 @@ export type RoleId =
 
 export type ShiftLength = 5 | 8;
 
-/** How many workers of each role the manager wants, e.g. { kitchen_helper: 2, waiter: 1 } */
-export type Order = Partial<Record<RoleId, number>>;
-
 /** PROTOTYPE DATA: every worker is fictional. */
 export interface Worker {
   id: string;
@@ -18,6 +15,9 @@ export interface Worker {
   role: RoleId;
   yearsExperience: number;
   languages: string[];
+  skills: string[];
+  /** Obviously fake number, shown as "Demo contact". */
+  contact: string;
   /** Working window each day, in hours (24h clock). */
   workStartHour: number;
   workEndHour: number;
@@ -25,13 +25,20 @@ export interface Worker {
   weeklyOff: number;
 }
 
-export interface Slot {
+/** One role in a booking, with its own shift. A booking can hold many lines. */
+export interface BookingLine {
+  id: string;
+  role: RoleId;
+  qty: number;
+  length: ShiftLength;
   /** YYYY-MM-DD */
   date: string;
   /** Minutes after midnight */
   startMinutes: number;
-  length: ShiftLength;
 }
+
+/** A line that hasn't been given an id yet (used when checking availability). */
+export type LineSpec = Omit<BookingLine, "id">;
 
 export interface LedgerEntry {
   workerId: string;
@@ -40,16 +47,21 @@ export interface LedgerEntry {
   endMinutes: number;
   /** "demo" = created by the "simulate another manager" tool */
   source: "booking" | "demo";
+  trackingId?: string;
 }
 
 export type Ledger = LedgerEntry[];
 
 export interface BillLine {
+  lineId: string;
   role: RoleId;
   label: string;
   qty: number;
   unitPrice: number;
   amount: number;
+  length: ShiftLength;
+  date: string;
+  startMinutes: number;
 }
 
 export interface Bill {
@@ -60,15 +72,41 @@ export interface Bill {
   grandTotal: number;
 }
 
-export interface BookedWorker {
+/** Tracking steps 1-6. Step 7 ("Rate your experience") is `completed` plus a rating. */
+export type TrackingStatus =
+  | "booked"
+  | "confirmation_check"
+  | "on_the_way"
+  | "replacement_arranged"
+  | "on_duty"
+  | "completed";
+
+export interface TrackEvent {
+  status: TrackingStatus | "rated";
+  /** ISO timestamp */
+  at: string;
+  note?: string;
+}
+
+export interface TrackedWorker {
+  /** Stays the same even if the worker is replaced. */
+  trackingId: string;
+  lineId: string;
   role: RoleId;
+  /** The worker currently assigned. */
   worker: Worker;
+  status: TrackingStatus;
+  history: TrackEvent[];
+  /** Workers whose booking was cancelled and replaced, oldest first. */
+  replaced: { worker: Worker; at: string }[];
+  rating?: { stars: number; note?: string; at: string };
 }
 
 export interface Booking {
   reference: string;
-  slot: Slot;
-  order: Order;
-  workers: BookedWorker[];
+  /** ISO timestamp */
+  createdAt: string;
+  lines: BookingLine[];
+  workers: TrackedWorker[];
   bill: Bill;
 }
