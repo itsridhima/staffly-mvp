@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+next-env.d.ts
+*.tsbuildinfo
+
+# secrets: never commit API keys
+.env
+.env*.local
+
+.vercel
+
+# not part of this app (separate folder with its own git repo) and local tool settings
+claude-brand-skills/
+.claude/
