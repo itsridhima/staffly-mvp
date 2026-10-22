@@ -27,7 +27,6 @@ export default function PaymentPage({ lines, method, onMethod, onPay, onBack, on
   const bill = billBreakdown(lines);
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-black">Payment</h2>
       <BillPanel lines={lines} withGst title="Bill details" />
 
       <fieldset className="glass p-4">

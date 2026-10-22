@@ -7,7 +7,7 @@ import { type ProfileData, selectedVenue, VENUE_TYPE_LABEL } from "@/lib/profile
 import type { Booking } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 
-export type ProfileTarget = "my-bookings" | "payments" | "help" | "crew" | "venues" | "edit-profile" | "account";
+export type ProfileTarget = "payments" | "venues" | "edit-profile" | "account";
 
 interface Props {
   profile: ProfileData;
@@ -32,10 +32,7 @@ function Icon({ d }: { d: string[] }) {
 }
 
 const ICONS = {
-  bookings: ["M5 5h14v15H5z", "M8 3v4M16 3v4M5 10h14"],
   payments: ["M3 7h18v12H3z", "M3 11h18", "M7 15h3"],
-  help: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7", "M12 17h.01"],
-  crew: ["M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z", "M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5", "M17 5.5a3 3 0 0 1 0 5.5", "M18 14.8c2.2.6 3.5 2.3 3.5 5.2"],
   venue: ["M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z", "M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"],
   edit: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
   account: ["M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M4 21c0-4 4-6 8-6s8 2 8 6"],
@@ -49,25 +46,18 @@ export default function ProfileView({ profile, accountName, avatarUrl, bookings,
   const venue = selectedVenue(profile);
   const needsLogin = configured && ready && !user;
 
+  // My shifts, Crew and Help are bottom tabs now, so they are not repeated here.
   const tiles: { target: ProfileTarget; title: string; sub: string; icon: string[] }[] = [
-    {
-      target: "my-bookings",
-      title: "My bookings",
-      sub: loading ? "Loading…" : bookings.length ? `${bookings.length} ${bookings.length === 1 ? "booking" : "bookings"}` : "View all bookings",
-      icon: ICONS.bookings,
-    },
     {
       target: "payments",
       title: "Payments",
-      sub: pay.count ? `${pay.count} ${pay.count === 1 ? "bill" : "bills"} · ${formatINR(pay.total)}` : "No bills yet",
+      sub: loading ? "Loading…" : pay.count ? `${pay.count} ${pay.count === 1 ? "bill" : "bills"} · ${formatINR(pay.total)}` : "No bills yet",
       icon: ICONS.payments,
     },
-    { target: "crew", title: "Your crew", sub: profile.favourites.length ? `${profile.favourites.length} favourite${profile.favourites.length === 1 ? "" : "s"}` : "Add favourite workers", icon: ICONS.crew },
-    { target: "help", title: "Help & Support", sub: "Get quick help", icon: ICONS.help },
+    { target: "venues", title: "Saved venues", sub: venue ? `${venue.label} selected` : "Add where workers should go", icon: ICONS.venue },
   ];
 
   const rows: { target: ProfileTarget; title: string; sub: string; icon: string[] }[] = [
-    { target: "venues", title: "Saved venues", sub: venue ? `${venue.label} selected` : "Add where workers should go", icon: ICONS.venue },
     { target: "edit-profile", title: "Edit profile", sub: "Name, venue and contact details", icon: ICONS.edit },
     { target: "account", title: "Manage account", sub: "Log out, policies and your data", icon: ICONS.account },
   ];
@@ -85,7 +75,7 @@ export default function ProfileView({ profile, accountName, avatarUrl, bookings,
             </span>
           )}
           <div className="min-w-0 flex-1">
-            <h1 className="truncate text-xl font-black">{name}</h1>
+            <h2 className="truncate text-xl font-black">{name}</h2>
             <p className="truncate text-sm text-sky-200">{contact}</p>
             {(profile.venueName || profile.venueType) && (
               <p className="truncate text-sm text-sky-100">

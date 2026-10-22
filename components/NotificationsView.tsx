@@ -6,17 +6,12 @@ import { cleanText } from "@/lib/prototypeData";
 interface Props {
   items: AppNotification[];
   onOpen: (reference: string) => void;
-  onBack: () => void;
 }
 
-export default function NotificationsView({ items, onOpen, onBack }: Props) {
+export default function NotificationsView({ items, onOpen }: Props) {
   return (
     <section className="space-y-4">
-      <button type="button" onClick={onBack} className="btn-ghost px-4 py-2 text-sm">
-        ← Back
-      </button>
-      <h1 className="text-2xl font-black">Notifications</h1>
-      <p className="muted -mt-2 text-xs">Updates about your workers and bookings.</p>
+      <p className="muted text-sm">Updates about your workers and bookings.</p>
       {items.length === 0 ? (
         <div className="glass p-5 text-sm">
           <p className="font-semibold">Nothing new</p>

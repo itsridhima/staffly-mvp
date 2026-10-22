@@ -20,20 +20,15 @@ const ACTION_LABEL: Record<TrackingAction, string> = {
 interface Props {
   booking: Booking;
   notice: string | null;
-  onBack: () => void;
   onAction: (trackingId: string, action: TrackingAction) => void;
   onRate: (trackingId: string, stars: number, note: string) => void;
   /** Developer tools (?dev=1): buttons that move a worker through the tracking steps for testing */
   devTools?: boolean;
 }
 
-export default function BookingDetail({ booking, notice, onBack, onAction, onRate, devTools = false }: Props) {
+export default function BookingDetail({ booking, notice, onAction, onRate, devTools = false }: Props) {
   return (
     <div className="space-y-5">
-      <button type="button" onClick={onBack} className="btn-ghost px-4 py-2 text-sm">
-        ← Back
-      </button>
-
       <section className="glass-dark p-5">
         <p className="text-sm text-sky-200">Booking reference</p>
         <p className="font-mono text-2xl font-black">{booking.reference}</p>

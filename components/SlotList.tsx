@@ -37,8 +37,18 @@ export default function SlotList({ options, length, selected = null, onSelect, h
               >
                 <span>
                   <span className="block font-semibold">{formatTimeRange(o.startMinutes, length)}</span>
-                  <span className={`block text-sm ${o.available ? (isSelected ? "text-sky-200" : "text-emerald-600") : ""}`}>
-                    {o.available ? (isSelected ? "Selected" : "Available") : `Unavailable: ${o.reason ?? "no staff free"}`}
+                  <span
+                    className={`block text-sm ${
+                      o.available ? (isSelected ? "text-sky-200" : o.fewLeft ? "font-semibold text-amber-600" : "text-emerald-600") : ""
+                    }`}
+                  >
+                    {o.available
+                      ? isSelected
+                        ? "Selected"
+                        : o.fewLeft
+                          ? "Available · Few left"
+                          : "Available"
+                      : `Unavailable: ${o.reason ?? "no staff free"}`}
                   </span>
                 </span>
                 <span className="whitespace-nowrap text-right">

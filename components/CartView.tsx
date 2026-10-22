@@ -40,8 +40,7 @@ export default function CartView({ lines, loginNote, venue, onChangeVenue, onRem
 
   return (
     <section className="space-y-4">
-      <h2 className="text-2xl font-black">Review booking</h2>
-      <p className="muted -mt-2 text-sm">
+      <p className="muted text-sm">
         {headcount(lines)} {headcount(lines) === 1 ? "worker" : "workers"} across {lines.length} {lines.length === 1 ? "shift" : "shifts"}
       </p>
 

@@ -104,9 +104,16 @@ export interface SlotOption {
   /** Price of this line (qty x unit price) before GST */
   total: number;
   reason?: string;
+  /** Available, but only just: at most one more worker than needed is free. Shown in words, never as a number. */
+  fewLeft?: boolean;
 }
 
 const HOUR = 60;
+
+/** How many workers of the line's role are free for the whole shift (ignores the quantity needed). */
+export function freeWorkerCount(line: LineSpec, ledger: Ledger, workers: Worker[] = WORKERS): number {
+  return workers.filter((w) => w.role === line.role && isWorkerFree(w, line, ledger)).length;
+}
 
 function optionFor(line: LineSpec, ledger: Ledger, now: Date, workers: Worker[]): SlotOption {
   const result = canStaffLine(line, ledger, now, workers);
@@ -115,6 +122,7 @@ function optionFor(line: LineSpec, ledger: Ledger, now: Date, workers: Worker[])
     available: result.ok,
     total: lineTotal(line),
     reason: result.ok ? undefined : result.reason,
+    fewLeft: result.ok ? freeWorkerCount(line, ledger, workers) - line.qty <= 1 : undefined,
   };
 }
 

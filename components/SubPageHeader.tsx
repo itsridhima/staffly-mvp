@@ -1,26 +1,22 @@
 "use client";
 
 interface Props {
-  title: string;
+  /** The screen title and back arrow now live in the shared header at the top of every screen. */
+  title?: string;
+  onBack?: () => void;
+  /** Optional line of text under the header, for example "Workers you've had on your shifts" */
   subtitle?: string;
-  onBack: () => void;
+  /** Optional button on the right, for example "+ Add" */
   action?: React.ReactNode;
 }
 
-/** Back arrow + title used by every Profile sub-page. */
-export default function SubPageHeader({ title, subtitle, onBack, action }: Props) {
+/** Page intro used by Profile sub-pages: a short description and/or an action button. */
+export default function SubPageHeader({ subtitle, action }: Props) {
+  if (!subtitle && !action) return null;
   return (
-    <header className="flex items-center gap-3">
-      <button type="button" onClick={onBack} aria-label="Back" className="neu flex h-11 w-11 shrink-0 items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
-          <path d="M15 5l-7 7 7 7" />
-        </svg>
-      </button>
-      <div className="min-w-0 flex-1">
-        <h1 className="truncate text-2xl font-black leading-tight">{title}</h1>
-        {subtitle && <p className="muted truncate text-sm">{subtitle}</p>}
-      </div>
+    <div className="flex items-center justify-between gap-3">
+      {subtitle ? <p className="muted text-sm">{subtitle}</p> : <span />}
       {action}
-    </header>
+    </div>
   );
 }

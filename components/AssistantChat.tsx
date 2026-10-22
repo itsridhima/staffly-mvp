@@ -64,17 +64,8 @@ export default function AssistantChat({ view, lines }: Props) {
     }
   }
 
-  if (!open) {
-    return (
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="btn-primary fixed bottom-28 right-4 z-40 px-4 py-3 text-sm"
-      >
-        Need help? Ask Staffly
-      </button>
-    );
-  }
+  // No floating button: the chat opens from Help & Support and the help row on Home.
+  if (!open) return null;
 
   return (
     <section

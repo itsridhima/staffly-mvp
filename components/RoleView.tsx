@@ -17,7 +17,6 @@ interface Props {
   ledger: Ledger;
   /** Used to show the employer's own ratings for this role */
   bookings: Booking[];
-  onBack: () => void;
   onAdd: (spec: LineSpec) => void;
 }
 
@@ -30,7 +29,7 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default function RoleView({ role, today, cart, ledger, bookings, onBack, onAdd }: Props) {
+export default function RoleView({ role, today, cart, ledger, bookings, onAdd }: Props) {
   const [tab, setTab] = useState<Tab>("overview");
   const info = roleInfo(role);
   const reviews = reviewsForRole(bookings, role);
@@ -43,12 +42,6 @@ export default function RoleView({ role, today, cart, ledger, bookings, onBack, 
 
   return (
     <div className="space-y-4">
-      <button type="button" onClick={onBack} aria-label="Back to home" className="neu flex h-11 w-11 items-center justify-center">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-5 w-5">
-          <path d="M15 5l-7 7 7 7" />
-        </svg>
-      </button>
-
       <section className="glass-dark relative overflow-hidden p-5">
         <div aria-hidden className="absolute -right-6 -top-6 h-36 w-36 rounded-full bg-sky-400/25 blur-2xl" />
         <div className="relative flex items-center gap-4">
@@ -56,7 +49,7 @@ export default function RoleView({ role, today, cart, ledger, bookings, onBack, 
             <RoleIcon role={role} className="h-11 w-11" />
           </span>
           <div>
-            <h1 className="text-2xl font-black leading-tight">{info.label}</h1>
+            <h2 className="text-2xl font-black leading-tight">{info.label}</h2>
             <p className="mt-1 text-sm text-sky-200">Shifts of 5 or 8 hours</p>
           </div>
         </div>

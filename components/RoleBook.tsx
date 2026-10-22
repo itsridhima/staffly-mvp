@@ -16,17 +16,24 @@ interface Props {
   cart: BookingLine[];
   ledger: Ledger;
   onAdd: (spec: LineSpec) => void;
+  /** Start from a previous booking ("Book again"). Everything stays editable. */
+  preset?: { qty: number; length: ShiftLength; startMinutes: number };
+}
+
+function toTimeInput(minutes: number): string {
+  return `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 }
 
 /** Per-role booking: shift length -> date -> start time -> slots -> number of workers -> add. */
-export default function RoleBook({ role, today, cart, ledger, onAdd }: Props) {
+export default function RoleBook({ role, today, cart, ledger, onAdd, preset }: Props) {
   const info = roleInfo(role);
-  const [length, setLength] = useState<ShiftLength>(5);
+  const [length, setLength] = useState<ShiftLength>(preset?.length ?? 5);
   const [date, setDate] = useState(() => addDays(today, 1)); // tomorrow: not affected by today's clock
-  const [startTime, setStartTime] = useState("12:00");
-  const [shownStart, setShownStart] = useState<number | null>(null);
+  const [startTime, setStartTime] = useState(preset ? toTimeInput(preset.startMinutes) : "12:00");
+  // With a preset, show the slots straight away.
+  const [shownStart, setShownStart] = useState<number | null>(preset ? preset.startMinutes : null);
   const [selected, setSelected] = useState<number | null>(null);
-  const [qty, setQty] = useState(1);
+  const [qty, setQty] = useState(Math.min(preset?.qty ?? 1, maxQuantity(role)));
 
   const requested = parseTime(startTime);
   const max = maxQuantity(role);

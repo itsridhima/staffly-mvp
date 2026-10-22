@@ -29,9 +29,15 @@ All three are covered by automated logic tests (`npm test`) and were also clicke
 7. **Profile → My bookings:** each worker's tracking timeline: Booked → Confirmation check → On the way (or Replacement arranged) → On duty → Shift completed → Rate your experience. A replacement keeps the same tracking ID and cancels the original worker's booking.
 8. If a slot is taken at any point, a clear message names that item and offers the nearest available start times for it; nothing is charged and the other items stay unchanged.
 
+**Navigation and Home layout** (modelled on Urban Company's home tab, in Staffly's own theme):
+- **Header:** on Home, a venue chip top-left; on every other screen, a back arrow top-left with the screen title. The bell and the profile icon are always top-right.
+- **Bottom bar:** five equal tabs: Home, Shifts (My bookings), Booking (review), Crew, Help. Hidden during payment.
+- **Home:** pinned search bar, a slim information bar, one 3×2 roles grid (price, next free shift, Add), then Book again, Your crew and a help row. Add opens a quick-book sheet.
+- **Back:** the on-screen arrow and the phone's back button follow the same rules (`lib/navigation.ts`).
+- **Test controls:** open the app with `?dev=1` to show the "book out" and tracking-step buttons.
+
 **Profile tab** (modelled on the features of home-service apps, adapted for Staffly):
-- **Profile header and Edit profile:** name, venue name and type, venue contact number. The home greeting uses your name.
-- **My bookings:** filters (All, Upcoming, Completed, Multiple roles); each card shows the roles, dates, venue, worker count and status.
+- **Profile header and Edit profile:** name, venue name and type, venue contact number. - **My bookings:** filters (All, Upcoming, Completed, Multiple roles); each card shows the roles, dates, venue, worker count and status.
 - **Payments:** history of bills with item total, GST and payment method (simulated). There is no wallet or credit balance.
 - **Your crew:** workers who've been on your shifts, a heart to save favourites, and "Book {role} again" (does not guarantee the same worker).
 - **Saved venues:** up to 5 addresses with one selected; the selected venue is shown on the review page, confirmation and booking detail.

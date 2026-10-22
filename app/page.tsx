@@ -1,84 +1,70 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import AppHeader from "@/components/AppHeader";
 import AssistantChat from "@/components/AssistantChat";
 import { useAuth } from "@/components/AuthProvider";
 import BookingDetail from "@/components/BookingDetail";
-import BottomNav, { type NavTarget } from "@/components/BottomNav";
+import BottomNav from "@/components/BottomNav";
 import CartView from "@/components/CartView";
 import Confirmation from "@/components/Confirmation";
 import CrewView from "@/components/CrewView";
 import EditProfileView from "@/components/EditProfileView";
 import HelpView from "@/components/HelpView";
 import HomeView from "@/components/HomeView";
+import LegalView from "@/components/LegalView";
 import LoginScreen from "@/components/LoginScreen";
 import ManageAccountView from "@/components/ManageAccountView";
+import ManageDataView from "@/components/ManageDataView";
 import MyBookingsView from "@/components/MyBookingsView";
 import NotificationsView from "@/components/NotificationsView";
 import PaymentPage, { type PayMethod } from "@/components/PaymentPage";
 import PaymentsView from "@/components/PaymentsView";
 import ProfileView, { type ProfileTarget } from "@/components/ProfileView";
+import QuickBookSheet from "@/components/QuickBookSheet";
 import RoleView from "@/components/RoleView";
 import SimulatedBankPage from "@/components/SimulatedBankPage";
+import StickyCartBar from "@/components/StickyCartBar";
 import UnavailableNotice from "@/components/UnavailableNotice";
+import VenueSheet from "@/components/VenueSheet";
 import VenuesView from "@/components/VenuesView";
 import { useBookings } from "@/components/useBookings";
 import { useProfile } from "@/components/useProfile";
 import { assignLines, findNearestAlternatives, type SlotOption } from "@/lib/availability";
 import { confirmBooking, makeLineId, simulateOtherBooking } from "@/lib/booking";
 import { readDevMode } from "@/lib/devMode";
+import type { BookAgainPreset } from "@/lib/home";
+import { LEGAL_DOCS, type LegalDoc } from "@/lib/legal";
 import { ledgerFromBookings } from "@/lib/ledger";
 import { KEYS, readLocal, writeLocal } from "@/lib/localStore";
+import {
+  activeTab,
+  back,
+  backTo,
+  canGoBack,
+  push,
+  showBottomBar,
+  type Tab,
+  tabStack,
+  VIEW_TITLE,
+  type View,
+} from "@/lib/navigation";
 import { deriveNotifications } from "@/lib/notifications";
-import { headcount } from "@/lib/pricing";
+import { billBreakdown, headcount } from "@/lib/pricing";
 import { addVenue, removeVenue, selectedVenue, selectVenue, toBookingVenue, toggleFavourite, updateVenue } from "@/lib/profile";
-import { roleInfo } from "@/lib/prototypeData";
+import { roleInfo, WORKERS } from "@/lib/prototypeData";
 import { toDateString } from "@/lib/time";
 import { applyAction, rateWorker, type TrackingAction } from "@/lib/tracking";
-import type { Booking, BookingLine, LedgerEntry, LineSpec, RoleId } from "@/lib/types";
-
-type View =
-  | "home"
-  | "role"
-  | "cart"
-  | "login"
-  | "payment"
-  | "bank"
-  | "taken"
-  | "confirmed"
-  | "profile"
-  | "my-bookings"
-  | "payments"
-  | "help"
-  | "crew"
-  | "venues"
-  | "edit-profile"
-  | "account"
-  | "booking"
-  | "notifications";
+import type { Booking, BookingLine, LedgerEntry, LineSpec, RoleId, Worker } from "@/lib/types";
 
 const PENDING_CHECKOUT = "staffly-pending-checkout";
 
-const NAV_FOR_VIEW: Record<View, NavTarget | null> = {
-  home: "home",
-  role: "home",
-  notifications: "home",
-  cart: "cart",
-  login: "cart",
-  payment: "cart",
-  bank: "cart",
-  taken: "cart",
-  profile: "profile",
-  "my-bookings": "profile",
-  payments: "profile",
-  help: "profile",
-  crew: "profile",
-  venues: "profile",
-  "edit-profile": "profile",
-  account: "profile",
-  booking: "profile",
-  confirmed: null,
-};
+/** Screens where the header shows which venue the booking is for. */
+const VENUE_LINE_VIEWS: View[] = ["role", "cart", "payment", "bank"];
+/** Screens where the "View booking" bar must not appear. */
+const NO_CART_BAR: View[] = ["cart", "login", "payment", "bank", "taken", "confirmed"];
+
+type Sheet = { type: "quick"; role: RoleId; preset?: BookAgainPreset } | { type: "venue" } | null;
 
 export default function Home() {
   const { configured, user, ready } = useAuth();
@@ -88,7 +74,14 @@ export default function Home() {
   const [today, setToday] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
 
-  const [view, setView] = useState<View>("home");
+  // The screens the user has opened, newest last. The on-screen back arrow and the phone's back button both use this.
+  const [stack, setStack] = useState<View[]>(["home"]);
+  const view = stack[stack.length - 1];
+  const stackRef = useRef(stack);
+  useEffect(() => {
+    stackRef.current = stack;
+  }, [stack]);
+
   const [roleId, setRoleId] = useState<RoleId>("waiter");
   const [cart, setCart] = useState<BookingLine[]>([]);
   const [demoEntries, setDemoEntries] = useState<LedgerEntry[]>([]);
@@ -100,14 +93,55 @@ export default function Home() {
   const [bookingNotice, setBookingNotice] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
   const [loginNote, setLoginNote] = useState<string | null>(null);
+  const [loginPurpose, setLoginPurpose] = useState<"checkout" | "general">("general");
+  const [legalDoc, setLegalDoc] = useState<LegalDoc["id"]>("terms");
+  const [sheet, setSheet] = useState<Sheet>(null);
   const [seenAt, setSeenAt] = useState("");
   // Test controls, hidden from customers. Open the app with ?dev=1 to show them.
   const [devTools, setDevTools] = useState(false);
-  // Where the back arrow on the booking detail and venues pages should return to.
-  const [bookingBack, setBookingBack] = useState<View>("my-bookings");
-  const [venuesBack, setVenuesBack] = useState<View>("profile");
 
-  // Load client-only state once (today's date, saved cart, test entries).
+  // ---- navigation -------------------------------------------------------------------------
+  const navigate = useCallback((next: View) => setStack((s) => push(s, next)), []);
+  const goBack = useCallback(() => setStack((s) => back(s)), []);
+  const backToView = useCallback((v: View) => setStack((s) => backTo(s, v)), []);
+  const openTab = useCallback((tab: Tab) => {
+    setLoginNote(null);
+    setStack(tabStack(tab));
+  }, []);
+
+  // Make the phone's / browser's back button follow the same rules as the on-screen back arrow.
+  const historyReady = useRef(false);
+  useEffect(() => {
+    if (historyReady.current) return;
+    historyReady.current = true;
+    const mark = (extra: Record<string, unknown>) => ({ ...(window.history.state ?? {}), stafflyBase: undefined, stafflyTop: undefined, ...extra });
+    try {
+      window.history.replaceState(mark({ stafflyBase: true }), "");
+      window.history.pushState(mark({ stafflyTop: true }), "");
+    } catch {
+      /* history not available: the on-screen back arrow still works */
+    }
+    const onPop = (e: PopStateEvent) => {
+      if (!e.state?.stafflyBase) return;
+      if (stackRef.current.length > 1) {
+        setStack((s) => back(s));
+        try {
+          window.history.pushState(mark({ stafflyTop: true }), "");
+        } catch {
+          /* ignore */
+        }
+      } else {
+        window.history.back(); // already on Home: let the phone leave the app
+      }
+    };
+    window.addEventListener("popstate", onPop);
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
+  }, [view]);
+
+  // ---- load client-only state ---------------------------------------------------------------
   useEffect(() => {
     setDevTools(readDevMode(window.location.search));
     setToday(toDateString(new Date()));
@@ -133,11 +167,9 @@ export default function Home() {
   const notifications = useMemo(() => deriveNotifications(bookings), [bookings]);
   const unseen = notifications.filter((n) => n.at > seenAt).length;
 
-  const go = useCallback((next: View) => {
-    setView(next);
-    if (typeof window !== "undefined") window.scrollTo({ top: 0 });
-  }, []);
+  const needsLogin = configured && ready && !user;
 
+  // ---- booking steps ------------------------------------------------------------------------
   /** Slot taken: name the line, offer the nearest alternatives for that line only. */
   const goTaken = useCallback(
     (lineId: string, reason: string) => {
@@ -149,33 +181,41 @@ export default function Home() {
         reason,
         alternatives: findNearestAlternatives(line, ledger, new Date(), others),
       });
-      go("taken");
+      navigate("taken");
     },
-    [cart, ledger, go],
+    [cart, ledger, navigate],
   );
 
   /** Re-check every line right now; if all are still free, move on. */
   const advanceIfStillFree = useCallback(
-    (next: View) => {
+    (next: View, replaceLogin = false) => {
       const result = assignLines(cart, ledger, new Date());
-      if (result.ok) go(next);
-      else goTaken(result.lineId, result.reason);
+      if (!result.ok) {
+        goTaken(result.lineId, result.reason);
+        return;
+      }
+      // Coming from the login screen: replace it, so Back doesn't land on a login that bounces forward again.
+      if (replaceLogin) setStack((s) => push(back(s), next));
+      else navigate(next);
     },
-    [cart, ledger, go, goTaken],
+    [cart, ledger, goTaken, navigate],
   );
 
   // Remember that we were on the way to checkout (Google login leaves the page and comes back).
   useEffect(() => {
-    if (view === "login") writeLocal(PENDING_CHECKOUT, true);
-  }, [view]);
+    if (view === "login" && loginPurpose === "checkout") writeLocal(PENDING_CHECKOUT, true);
+  }, [view, loginPurpose]);
 
-  // After an email-code login (no page reload): carry on to payment.
+  // After a login that didn't reload the page: carry on to payment, or return to where we were.
   useEffect(() => {
-    if (user && view === "login" && headcount(cart) > 0) {
+    if (!user || view !== "login") return;
+    if (loginPurpose === "checkout" && headcount(cart) > 0) {
       writeLocal(PENDING_CHECKOUT, false);
-      advanceIfStillFree("payment");
+      advanceIfStillFree("payment", true);
+    } else {
+      goBack();
     }
-  }, [user, view, cart, advanceIfStillFree]);
+  }, [user, view, loginPurpose, cart, advanceIfStillFree, goBack]);
 
   // After a Google login (page reloaded): return to the booking, ready to continue.
   useEffect(() => {
@@ -183,14 +223,15 @@ export default function Home() {
     if (readLocal<boolean>(PENDING_CHECKOUT, false)) {
       writeLocal(PENDING_CHECKOUT, false);
       setLoginNote("You're signed in. Press Continue to go to payment.");
-      go("cart");
+      setStack(["home", "cart"]);
     }
-  }, [ready, loaded, user, go]);
+  }, [ready, loaded, user]);
 
   function handleContinue() {
     if (headcount(cart) === 0) return;
     if (configured && !user) {
-      go("login");
+      setLoginPurpose("checkout");
+      navigate("login");
       return;
     }
     advanceIfStillFree("payment");
@@ -207,22 +248,33 @@ export default function Home() {
     setConfirmed(booking);
     setCart([]);
     setSaveError(null);
-    go("confirmed");
+    navigate("confirmed");
     const err = await addBooking(booking);
     if (err) setSaveError("Your booking was confirmed on screen but could not be saved to your account. Please screenshot your reference and try again later.");
   }
 
-  function addLine(spec: LineSpec) {
+  function addLineToCart(spec: LineSpec) {
     setCart((prev) => [...prev, { ...spec, id: makeLineId() }]);
     setToast(`Added ${spec.qty} × ${roleInfo(spec.role).label} to your booking`);
-    go("home");
+  }
+
+  /** Added from a role page: return to Home. */
+  function addFromRolePage(spec: LineSpec) {
+    addLineToCart(spec);
+    setStack(["home"]);
+  }
+
+  /** Added from the quick-book sheet: close it and stay where we are. */
+  function addFromSheet(spec: LineSpec) {
+    addLineToCart(spec);
+    setSheet(null);
   }
 
   function changeLineStart(startMinutes: number) {
     if (!taken) return;
     setCart((prev) => prev.map((l) => (l.id === taken.lineId ? { ...l, startMinutes } : l)));
     setTaken(null);
-    go("cart");
+    backToView("cart");
   }
 
   function demoTake() {
@@ -261,22 +313,44 @@ export default function Home() {
     await updateBooking(result.booking);
   }
 
-  /** `from` = the page the back arrow should return to. */
-  function openBooking(reference: string, from: View = "my-bookings") {
+  // ---- small navigation helpers used by screens ----------------------------------------------
+  function openBooking(reference: string) {
     setSelectedRef(reference);
     setBookingNotice(null);
-    setBookingBack(from);
-    go("booking");
+    navigate("booking");
+  }
+
+  function openNotifications() {
+    const now = new Date().toISOString();
+    setSeenAt(now);
+    writeLocal(KEYS.notificationsSeen, now);
+    navigate("notifications");
+  }
+
+  function openRole(role: RoleId) {
+    setSheet(null);
+    setRoleId(role);
+    navigate("role");
+  }
+
+  function openDoc(id: LegalDoc["id"]) {
+    setLegalDoc(id);
+    navigate("legal");
+  }
+
+  function openLogin(purpose: "checkout" | "general") {
+    setLoginPurpose(purpose);
+    navigate("login");
+  }
+
+  /** The venue chip / "at Main café" line: log in first if needed, otherwise pick a venue. */
+  function openVenue() {
+    if (needsLogin) openLogin("general");
+    else setSheet({ type: "venue" });
   }
 
   function openProfileTarget(target: ProfileTarget) {
-    if (target === "venues") setVenuesBack("profile");
-    go(target);
-  }
-
-  function rebookRole(role: RoleId) {
-    setRoleId(role);
-    go("role");
+    navigate(target);
   }
 
   function askAssistant() {
@@ -287,66 +361,71 @@ export default function Home() {
     updateProfile((p) => addVenue(p, input, `v${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`));
   }
 
-  function openNotifications() {
-    const now = new Date().toISOString();
-    setSeenAt(now);
-    writeLocal(KEYS.notificationsSeen, now);
-    go("notifications");
-  }
-
-  function onNavigate(target: NavTarget) {
-    setLoginNote(null);
-    go(target === "cart" ? "cart" : target);
-  }
-
+  // ---- render --------------------------------------------------------------------------------
   if (today === null || !loaded) {
-    return (
-      <main className="mx-auto max-w-lg p-6 muted">Loading…</main>
-    );
+    return <main className="mx-auto max-w-lg p-6 muted">Loading…</main>;
   }
 
   const accountName: string | null = (user?.user_metadata?.full_name as string | undefined) ?? null;
   const avatarUrl: string | null = (user?.user_metadata?.avatar_url as string | undefined) ?? (user?.user_metadata?.picture as string | undefined) ?? null;
-  const greetingName = profile.name.split(" ")[0] || accountName?.split(" ")[0] || user?.email?.split("@")[0] || null;
+  const initial = user ? (profile.name || accountName || user.email || "").trim()[0]?.toUpperCase() ?? null : null;
   const venueForBooking = selectedVenue(profile);
   const selectedBooking = bookings.find((b) => b.reference === selectedRef) ?? null;
   const takenLine = taken ? cart.find((l) => l.id === taken.lineId) : undefined;
-  const hideNav = view === "payment" || view === "bank";
+  const favouriteWorkers = profile.favourites.map((id) => WORKERS.find((w) => w.id === id)).filter((w): w is Worker => Boolean(w));
+
+  const isHome = view === "home";
+  const title = view === "role" ? roleInfo(roleId).shortLabel : view === "legal" ? LEGAL_DOCS[legalDoc].title : VIEW_TITLE[view];
+  const venueLine = VENUE_LINE_VIEWS.includes(view) ? (venueForBooking ? `at ${venueForBooking.label}` : "Add your venue") : null;
+  const barVisible = showBottomBar(view);
+  const cartBarVisible = barVisible && headcount(cart) > 0 && !NO_CART_BAR.includes(view) && sheet === null;
+  const cartTotal = billBreakdown(cart).itemTotal;
 
   return (
     <>
-      <main className="mx-auto max-w-lg space-y-4 px-4 pb-32 pt-5">
+      <main className={`mx-auto max-w-lg space-y-4 px-4 pt-1 ${barVisible ? (cartBarVisible ? "pb-44" : "pb-28") : "pb-10"}`}>
         {toast && (
           <div role="status" className="glass-dark fixed left-1/2 top-4 z-50 w-[calc(100%-2rem)] max-w-md -translate-x-1/2 px-4 py-3 text-sm font-semibold">
             ✓ {toast}
           </div>
         )}
 
+        <AppHeader
+          isHome={isHome}
+          title={title}
+          venueLine={venueLine}
+          onVenueLine={openVenue}
+          canBack={canGoBack(stack)}
+          onBack={goBack}
+          venueLabel={venueForBooking?.label ?? "Add your venue"}
+          onVenue={openVenue}
+          notificationCount={unseen}
+          onBell={openNotifications}
+          avatarUrl={avatarUrl}
+          initial={initial}
+          profileActive={view === "profile"}
+          onProfile={() => navigate("profile")}
+        />
+
         {view === "home" && (
           <HomeView
             lines={cart}
-            greetingName={greetingName}
-            notificationCount={unseen}
-            onOpenRole={(r) => {
-              setRoleId(r);
-              go("role");
-            }}
-            onOpenCart={() => go("cart")}
-            onOpenNotifications={openNotifications}
+            bookings={bookings}
+            ledger={ledger}
+            favourites={favouriteWorkers}
+            onOpenRole={openRole}
+            onQuickAdd={(role, preset) => setSheet({ type: "quick", role, preset })}
+            onOpenCart={() => openTab("booking")}
+            onOpenBooking={openBooking}
+            onOpenShifts={() => openTab("shifts")}
+            onOpenCrew={() => openTab("crew")}
+            onOpenHelp={() => openTab("help")}
+            onOpenDoc={openDoc}
           />
         )}
 
         {view === "role" && (
-          <RoleView
-            key={roleId}
-            role={roleId}
-            today={today}
-            cart={cart}
-            ledger={ledger}
-            bookings={bookings}
-            onBack={() => go("home")}
-            onAdd={addLine}
-          />
+          <RoleView key={roleId} role={roleId} today={today} cart={cart} ledger={ledger} bookings={bookings} onAdd={addFromRolePage} />
         )}
 
         {view === "cart" && (
@@ -354,25 +433,27 @@ export default function Home() {
             lines={cart}
             loginNote={loginNote}
             venue={venueForBooking}
-            onChangeVenue={() => {
-              setVenuesBack("cart");
-              go("venues");
-            }}
+            onChangeVenue={openVenue}
             onRemove={(id) => setCart((prev) => prev.filter((l) => l.id !== id))}
-            onAddAnother={() => go("home")}
+            onAddAnother={() => openTab("home")}
             onContinue={handleContinue}
             onDemoTake={devTools ? demoTake : undefined}
           />
         )}
 
-        {view === "login" && <LoginScreen reason="Log in to continue to payment. Your booking is saved." onCancel={() => go("cart")} />}
+        {view === "login" && (
+          <LoginScreen
+            reason={loginPurpose === "checkout" ? "Log in to continue to payment. Your booking is saved." : "Log in to save your venues, bookings and crew."}
+            onCancel={goBack}
+          />
+        )}
 
         {view === "payment" && (
-          <PaymentPage lines={cart} method={method} onMethod={setMethod} onBack={() => go("cart")} onPay={() => advanceIfStillFree("bank")} onDemoTake={devTools ? demoTake : undefined} />
+          <PaymentPage lines={cart} method={method} onMethod={setMethod} onBack={goBack} onPay={() => advanceIfStillFree("bank")} onDemoTake={devTools ? demoTake : undefined} />
         )}
 
         {view === "bank" && (
-          <SimulatedBankPage lines={cart} onApprove={approvePayment} onDecline={() => go("payment")} onDemoTake={devTools ? demoTake : undefined} />
+          <SimulatedBankPage lines={cart} onApprove={approvePayment} onDecline={goBack} onDemoTake={devTools ? demoTake : undefined} />
         )}
 
         {view === "taken" && taken && takenLine && (
@@ -381,7 +462,7 @@ export default function Home() {
             reason={taken.reason}
             alternatives={taken.alternatives}
             onSelectAlternative={changeLineStart}
-            onBackToBooking={() => go("cart")}
+            onBackToBooking={() => backToView("cart")}
           />
         )}
 
@@ -389,10 +470,14 @@ export default function Home() {
           <Confirmation
             booking={confirmed}
             saveError={saveError}
-            onViewBookings={() => openBooking(confirmed.reference, "my-bookings")}
+            onViewBookings={() => {
+              setSelectedRef(confirmed.reference);
+              setBookingNotice(null);
+              setStack(["home", "my-bookings", "booking"]);
+            }}
             onReset={() => {
               setConfirmed(null);
-              go("home");
+              openTab("home");
             }}
           />
         )}
@@ -406,7 +491,7 @@ export default function Home() {
             loading={loading}
             error={bookingsError ?? profileError}
             onOpen={openProfileTarget}
-            onLogin={() => go("login")}
+            onLogin={() => openLogin("general")}
           />
         )}
 
@@ -415,24 +500,22 @@ export default function Home() {
             bookings={bookings}
             loading={loading}
             error={bookingsError}
-            onOpenBooking={(ref) => openBooking(ref, "my-bookings")}
-            onBookNow={() => go("home")}
-            onBack={() => go("profile")}
+            onOpenBooking={openBooking}
+            onBookNow={() => openTab("home")}
+            onBack={goBack}
           />
         )}
 
-        {view === "payments" && (
-          <PaymentsView bookings={bookings} onOpenBooking={(ref) => openBooking(ref, "payments")} onBookNow={() => go("home")} onBack={() => go("profile")} />
-        )}
+        {view === "payments" && <PaymentsView bookings={bookings} onOpenBooking={openBooking} onBookNow={() => openTab("home")} onBack={goBack} />}
 
         {view === "crew" && (
           <CrewView
             bookings={bookings}
             profile={profile}
             onToggleFavourite={(id) => updateProfile((p) => toggleFavourite(p, id))}
-            onRebook={rebookRole}
-            onBookNow={() => go("home")}
-            onBack={() => go("profile")}
+            onRebook={(role) => setSheet({ type: "quick", role })}
+            onBookNow={() => openTab("home")}
+            onBack={goBack}
           />
         )}
 
@@ -444,33 +527,58 @@ export default function Home() {
             onUpdate={(id, input) => updateProfile((p) => updateVenue(p, id, input))}
             onRemove={(id) => updateProfile((p) => removeVenue(p, id))}
             onSelect={(id) => updateProfile((p) => selectVenue(p, id))}
-            onBack={() => go(venuesBack)}
+            onBack={goBack}
           />
         )}
 
-        {view === "edit-profile" && <EditProfileView profile={profile} onSave={saveProfile} onBack={() => go("profile")} />}
+        {view === "edit-profile" && <EditProfileView profile={profile} onSave={saveProfile} onBack={goBack} />}
 
-        {view === "help" && <HelpView onOpenBookings={() => go("my-bookings")} onAskAssistant={askAssistant} onBack={() => go("profile")} />}
+        {view === "help" && <HelpView onOpenBookings={() => openTab("shifts")} onAskAssistant={askAssistant} onBack={goBack} />}
 
-        {view === "account" && <ManageAccountView profile={profile} bookings={bookings} onSaveProfile={saveProfile} onBack={() => go("profile")} />}
+        {view === "account" && <ManageAccountView onOpenDoc={openDoc} onOpenData={() => navigate("manage-data")} />}
+
+        {view === "legal" && <LegalView docId={legalDoc} />}
+
+        {view === "manage-data" && <ManageDataView profile={profile} bookings={bookings} onSaveProfile={saveProfile} />}
 
         {view === "booking" && selectedBooking && (
-          <BookingDetail
-            booking={selectedBooking}
-            notice={bookingNotice}
-            onBack={() => go(bookingBack)}
-            onAction={onTrackingAction}
-            onRate={onRate}
-            devTools={devTools}
-          />
+          <BookingDetail booking={selectedBooking} notice={bookingNotice} onAction={onTrackingAction} onRate={onRate} devTools={devTools} />
         )}
 
-        {view === "notifications" && (
-          <NotificationsView items={notifications} onOpen={(ref) => openBooking(ref, "notifications")} onBack={() => go("home")} />
-        )}
+        {view === "notifications" && <NotificationsView items={notifications} onOpen={openBooking} />}
       </main>
 
-      {!hideNav && <BottomNav active={NAV_FOR_VIEW[view]} cartCount={headcount(cart)} onNavigate={onNavigate} />}
+      {cartBarVisible && <StickyCartBar shifts={cart.length} total={cartTotal} onOpen={() => openTab("booking")} />}
+      {barVisible && <BottomNav active={activeTab(view)} bookingCount={headcount(cart)} shiftsDot={unseen > 0} onSelect={openTab} />}
+
+      <QuickBookSheet
+        role={sheet?.type === "quick" ? sheet.role : null}
+        preset={sheet?.type === "quick" ? sheet.preset : undefined}
+        today={today}
+        cart={cart}
+        ledger={ledger}
+        onAdd={addFromSheet}
+        onSeeDetails={openRole}
+        onClose={() => setSheet(null)}
+      />
+      <VenueSheet
+        open={sheet?.type === "venue"}
+        profile={profile}
+        onSelect={(id) => {
+          updateProfile((p) => selectVenue(p, id));
+          setSheet(null);
+        }}
+        onAdd={() => {
+          setSheet(null);
+          navigate("venues");
+        }}
+        onManage={() => {
+          setSheet(null);
+          navigate("venues");
+        }}
+        onClose={() => setSheet(null)}
+      />
+
       <AssistantChat view={view} lines={cart} />
     </>
   );
