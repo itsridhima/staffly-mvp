@@ -28,6 +28,13 @@ export default function AssistantChat({ view, lines }: Props) {
     endRef.current?.scrollIntoView({ block: "end" });
   }, [messages, open]);
 
+  // Other screens (for example Help & Support) can open the chat.
+  useEffect(() => {
+    const openChat = () => setOpen(true);
+    window.addEventListener("staffly:open-assistant", openChat);
+    return () => window.removeEventListener("staffly:open-assistant", openChat);
+  }, []);
+
   async function send(text: string) {
     const content = text.trim();
     if (!content || busy) return;

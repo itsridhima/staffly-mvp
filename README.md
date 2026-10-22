@@ -29,6 +29,17 @@ All three are covered by automated logic tests (`npm test`) and were also clicke
 7. **Profile → My bookings:** each worker's tracking timeline: Booked → Confirmation check → On the way (or Replacement arranged) → On duty → Shift completed → Rate your experience. A replacement keeps the same tracking ID and cancels the original worker's booking.
 8. If a slot is taken at any point, a clear message names that item and offers the nearest available start times for it; nothing is charged and the other items stay unchanged.
 
+**Profile tab** (modelled on the features of home-service apps, adapted for Staffly):
+- **Profile header and Edit profile:** name, venue name and type, venue contact number. The home greeting uses your name.
+- **My bookings:** filters (All, Upcoming, Completed, Multiple roles); each card shows the roles, dates, venue, worker count and status.
+- **Payments:** history of bills with item total, GST and payment method (simulated). There is no wallet or credit balance.
+- **Your crew:** workers who've been on your shifts, a heart to save favourites, and "Book {role} again" (does not guarantee the same worker).
+- **Saved venues:** up to 5 addresses with one selected; the selected venue is shown on the review page, confirmation and booking detail.
+- **Help & Support:** searchable FAQ with topics, a shortcut to My bookings, and a button that opens the chat helper.
+- **Manage account:** log out, Terms of Use, Privacy Policy, Refund & Cancellation Policy (placeholders: not written yet), and Manage data (download your data, clear your saved profile, clear this device).
+- Not included on purpose: offers, referrals and a wallet (nothing was specified), and account deletion (not possible without a server-side admin key).
+- Profile data is stored in your sign-in account's metadata (no extra Supabase table), or in this browser in guest mode.
+
 ## Architecture: Input → AI → Logic → Action → Output
 | Stage | What happens here |
 |---|---|

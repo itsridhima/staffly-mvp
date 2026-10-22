@@ -7,22 +7,31 @@ import BookingDetail from "@/components/BookingDetail";
 import BottomNav, { type NavTarget } from "@/components/BottomNav";
 import CartView from "@/components/CartView";
 import Confirmation from "@/components/Confirmation";
+import CrewView from "@/components/CrewView";
+import EditProfileView from "@/components/EditProfileView";
+import HelpView from "@/components/HelpView";
 import HomeView from "@/components/HomeView";
 import LoginScreen from "@/components/LoginScreen";
+import ManageAccountView from "@/components/ManageAccountView";
+import MyBookingsView from "@/components/MyBookingsView";
 import NotificationsView from "@/components/NotificationsView";
 import PaymentPage, { type PayMethod } from "@/components/PaymentPage";
-import ProfileView from "@/components/ProfileView";
+import PaymentsView from "@/components/PaymentsView";
+import ProfileView, { type ProfileTarget } from "@/components/ProfileView";
 import PrototypeBanner from "@/components/PrototypeBanner";
 import RoleView from "@/components/RoleView";
 import SimulatedBankPage from "@/components/SimulatedBankPage";
 import UnavailableNotice from "@/components/UnavailableNotice";
+import VenuesView from "@/components/VenuesView";
 import { useBookings } from "@/components/useBookings";
+import { useProfile } from "@/components/useProfile";
 import { assignLines, findNearestAlternatives, type SlotOption } from "@/lib/availability";
 import { confirmBooking, makeLineId, simulateOtherBooking } from "@/lib/booking";
 import { ledgerFromBookings } from "@/lib/ledger";
 import { KEYS, readLocal, writeLocal } from "@/lib/localStore";
 import { deriveNotifications } from "@/lib/notifications";
 import { headcount } from "@/lib/pricing";
+import { addVenue, removeVenue, selectedVenue, selectVenue, toBookingVenue, toggleFavourite, updateVenue } from "@/lib/profile";
 import { roleInfo } from "@/lib/prototypeData";
 import { toDateString } from "@/lib/time";
 import { applyAction, rateWorker, type TrackingAction } from "@/lib/tracking";
@@ -38,6 +47,13 @@ type View =
   | "taken"
   | "confirmed"
   | "profile"
+  | "my-bookings"
+  | "payments"
+  | "help"
+  | "crew"
+  | "venues"
+  | "edit-profile"
+  | "account"
   | "booking"
   | "notifications";
 
@@ -53,6 +69,13 @@ const NAV_FOR_VIEW: Record<View, NavTarget | null> = {
   bank: "cart",
   taken: "cart",
   profile: "profile",
+  "my-bookings": "profile",
+  payments: "profile",
+  help: "profile",
+  crew: "profile",
+  venues: "profile",
+  "edit-profile": "profile",
+  account: "profile",
   booking: "profile",
   confirmed: null,
 };
@@ -60,6 +83,7 @@ const NAV_FOR_VIEW: Record<View, NavTarget | null> = {
 export default function Home() {
   const { configured, user, ready } = useAuth();
   const { bookings, loading, error: bookingsError, addBooking, updateBooking } = useBookings(user, ready);
+  const { profile, error: profileError, save: saveProfile, update: updateProfile } = useProfile(user, ready);
 
   const [today, setToday] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
@@ -77,6 +101,9 @@ export default function Home() {
   const [toast, setToast] = useState<string | null>(null);
   const [loginNote, setLoginNote] = useState<string | null>(null);
   const [seenAt, setSeenAt] = useState("");
+  // Where the back arrow on the booking detail and venues pages should return to.
+  const [bookingBack, setBookingBack] = useState<View>("my-bookings");
+  const [venuesBack, setVenuesBack] = useState<View>("profile");
 
   // Load client-only state once (today's date, saved cart, demo entries).
   useEffect(() => {
@@ -172,11 +199,13 @@ export default function Home() {
       goTaken(result.lineId, result.reason);
       return;
     }
-    setConfirmed(result.booking);
+    // Remember where the workers should go and how it was paid (simulated).
+    const booking: Booking = { ...result.booking, venue: toBookingVenue(selectedVenue(profile)), paymentMethod: method };
+    setConfirmed(booking);
     setCart([]);
     setSaveError(null);
     go("confirmed");
-    const err = await addBooking(result.booking);
+    const err = await addBooking(booking);
     if (err) setSaveError("Your booking was confirmed on screen but could not be saved to your account. Please screenshot your reference and try again later.");
   }
 
@@ -229,10 +258,30 @@ export default function Home() {
     await updateBooking(result.booking);
   }
 
-  function openBooking(reference: string) {
+  /** `from` = the page the back arrow should return to. */
+  function openBooking(reference: string, from: View = "my-bookings") {
     setSelectedRef(reference);
     setBookingNotice(null);
+    setBookingBack(from);
     go("booking");
+  }
+
+  function openProfileTarget(target: ProfileTarget) {
+    if (target === "venues") setVenuesBack("profile");
+    go(target);
+  }
+
+  function rebookRole(role: RoleId) {
+    setRoleId(role);
+    go("role");
+  }
+
+  function askAssistant() {
+    window.dispatchEvent(new Event("staffly:open-assistant"));
+  }
+
+  function addSavedVenue(input: { label: string; address: string; pincode?: string }) {
+    updateProfile((p) => addVenue(p, input, `v${Date.now().toString(36)}${Math.floor(Math.random() * 1e4).toString(36)}`));
   }
 
   function openNotifications() {
@@ -256,7 +305,10 @@ export default function Home() {
     );
   }
 
-  const greetingName = user?.user_metadata?.full_name?.split(" ")[0] ?? user?.email?.split("@")[0] ?? null;
+  const accountName: string | null = (user?.user_metadata?.full_name as string | undefined) ?? null;
+  const avatarUrl: string | null = (user?.user_metadata?.avatar_url as string | undefined) ?? (user?.user_metadata?.picture as string | undefined) ?? null;
+  const greetingName = profile.name.split(" ")[0] || accountName?.split(" ")[0] || user?.email?.split("@")[0] || null;
+  const venueForBooking = selectedVenue(profile);
   const selectedBooking = bookings.find((b) => b.reference === selectedRef) ?? null;
   const takenLine = taken ? cart.find((l) => l.id === taken.lineId) : undefined;
   const hideNav = view === "payment" || view === "bank";
@@ -301,6 +353,11 @@ export default function Home() {
           <CartView
             lines={cart}
             loginNote={loginNote}
+            venue={venueForBooking}
+            onChangeVenue={() => {
+              setVenuesBack("cart");
+              go("venues");
+            }}
             onRemove={(id) => setCart((prev) => prev.filter((l) => l.id !== id))}
             onAddAnother={() => go("home")}
             onContinue={handleContinue}
@@ -332,10 +389,7 @@ export default function Home() {
           <Confirmation
             booking={confirmed}
             saveError={saveError}
-            onViewBookings={() => {
-              setSelectedRef(confirmed.reference);
-              go("booking");
-            }}
+            onViewBookings={() => openBooking(confirmed.reference, "my-bookings")}
             onReset={() => {
               setConfirmed(null);
               go("home");
@@ -344,21 +398,74 @@ export default function Home() {
         )}
 
         {view === "profile" && (
-          <ProfileView bookings={bookings} loading={loading} error={bookingsError} onOpenBooking={openBooking} onLogin={() => go("login")} />
+          <ProfileView
+            profile={profile}
+            accountName={accountName}
+            avatarUrl={avatarUrl}
+            bookings={bookings}
+            loading={loading}
+            error={bookingsError ?? profileError}
+            onOpen={openProfileTarget}
+            onLogin={() => go("login")}
+          />
         )}
+
+        {view === "my-bookings" && (
+          <MyBookingsView
+            bookings={bookings}
+            loading={loading}
+            error={bookingsError}
+            onOpenBooking={(ref) => openBooking(ref, "my-bookings")}
+            onBookNow={() => go("home")}
+            onBack={() => go("profile")}
+          />
+        )}
+
+        {view === "payments" && (
+          <PaymentsView bookings={bookings} onOpenBooking={(ref) => openBooking(ref, "payments")} onBookNow={() => go("home")} onBack={() => go("profile")} />
+        )}
+
+        {view === "crew" && (
+          <CrewView
+            bookings={bookings}
+            profile={profile}
+            onToggleFavourite={(id) => updateProfile((p) => toggleFavourite(p, id))}
+            onRebook={rebookRole}
+            onBookNow={() => go("home")}
+            onBack={() => go("profile")}
+          />
+        )}
+
+        {view === "venues" && (
+          <VenuesView
+            profile={profile}
+            error={profileError}
+            onAdd={addSavedVenue}
+            onUpdate={(id, input) => updateProfile((p) => updateVenue(p, id, input))}
+            onRemove={(id) => updateProfile((p) => removeVenue(p, id))}
+            onSelect={(id) => updateProfile((p) => selectVenue(p, id))}
+            onBack={() => go(venuesBack)}
+          />
+        )}
+
+        {view === "edit-profile" && <EditProfileView profile={profile} onSave={saveProfile} onBack={() => go("profile")} />}
+
+        {view === "help" && <HelpView onOpenBookings={() => go("my-bookings")} onAskAssistant={askAssistant} onBack={() => go("profile")} />}
+
+        {view === "account" && <ManageAccountView profile={profile} bookings={bookings} onSaveProfile={saveProfile} onBack={() => go("profile")} />}
 
         {view === "booking" && selectedBooking && (
           <BookingDetail
             booking={selectedBooking}
             notice={bookingNotice}
-            onBack={() => go("profile")}
+            onBack={() => go(bookingBack)}
             onAction={onTrackingAction}
             onRate={onRate}
           />
         )}
 
         {view === "notifications" && (
-          <NotificationsView items={notifications} onOpen={openBooking} onBack={() => go("home")} />
+          <NotificationsView items={notifications} onOpen={(ref) => openBooking(ref, "notifications")} onBack={() => go("home")} />
         )}
       </main>
 

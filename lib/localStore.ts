@@ -22,6 +22,7 @@ export const KEYS = {
   guestBookings: "staffly-guest-bookings",
   demoLedger: "staffly-demo-ledger",
   notificationsSeen: "staffly-notifications-seen",
+  guestProfile: "staffly-guest-profile",
 } as const;
 
 /** Bookings that couldn't be saved to Supabase yet (kept on this device so they aren't lost). */

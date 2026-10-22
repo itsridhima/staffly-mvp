@@ -29,7 +29,7 @@ export default function BookingDetail({ booking, notice, onBack, onAction, onRat
   return (
     <div className="space-y-5">
       <button type="button" onClick={onBack} className="btn-ghost px-4 py-2 text-sm">
-        ← My bookings
+        ← Back
       </button>
 
       <section className="glass-dark p-5">
@@ -42,6 +42,14 @@ export default function BookingDetail({ booking, notice, onBack, onAction, onRat
         <p role="status" className="rounded-2xl bg-sky-50 px-4 py-3 text-sm text-sky-900">
           {notice}
         </p>
+      )}
+
+      {booking.venue && (
+        <div className="glass p-4 text-sm">
+          <div className="muted text-xs">Shift location</div>
+          <div className="font-bold">{booking.venue.label}</div>
+          <div className="muted">{booking.venue.address}</div>
+        </div>
       )}
 
       {booking.lines.map((line) => {

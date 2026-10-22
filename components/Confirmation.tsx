@@ -27,6 +27,14 @@ export default function Confirmation({ booking, saveError, onViewBookings, onRes
 
       {saveError && <p role="alert" className="rounded-2xl bg-amber-50 px-4 py-3 text-sm text-amber-900">{saveError}</p>}
 
+      {booking.venue && (
+        <div className="glass p-4 text-sm">
+          <div className="muted text-xs">Shift location</div>
+          <div className="font-bold">{booking.venue.label}</div>
+          <div className="muted">{booking.venue.address}</div>
+        </div>
+      )}
+
       <div className="space-y-3">
         <h2 className="text-lg font-bold">Your workers</h2>
         {ROLES.map((role) => {

@@ -102,6 +102,12 @@ export interface TrackedWorker {
   rating?: { stars: number; note?: string; at: string };
 }
 
+/** Where the workers should go. A snapshot taken at booking time. */
+export interface BookingVenue {
+  label: string;
+  address: string;
+}
+
 export interface Booking {
   reference: string;
   /** ISO timestamp */
@@ -109,4 +115,7 @@ export interface Booking {
   lines: BookingLine[];
   workers: TrackedWorker[];
   bill: Bill;
+  venue?: BookingVenue;
+  /** How the (simulated) payment was made */
+  paymentMethod?: "upi" | "card" | "netbanking";
 }

@@ -1,99 +1,175 @@
 "use client";
 
+import { APP_VERSION } from "@/lib/appInfo";
+import { paymentsSummary } from "@/lib/bookingFilters";
 import { formatINR } from "@/lib/pricing";
-import { STATUS_LABEL } from "@/lib/tracking";
+import { type ProfileData, selectedVenue, VENUE_TYPE_LABEL } from "@/lib/profile";
 import type { Booking } from "@/lib/types";
 import { useAuth } from "./AuthProvider";
 
+export type ProfileTarget = "my-bookings" | "payments" | "help" | "crew" | "venues" | "edit-profile" | "account";
+
 interface Props {
+  profile: ProfileData;
+  /** Name from the sign-in account, used until the employer sets their own */
+  accountName: string | null;
+  avatarUrl: string | null;
   bookings: Booking[];
   loading: boolean;
   error: string | null;
-  onOpenBooking: (reference: string) => void;
+  onOpen: (target: ProfileTarget) => void;
   onLogin: () => void;
 }
 
-function createdLabel(iso: string): string {
-  return new Date(iso).toLocaleString("en-IN", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" });
+function Icon({ d }: { d: string[] }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden className="h-6 w-6">
+      {d.map((p) => (
+        <path key={p} d={p} />
+      ))}
+    </svg>
+  );
 }
 
-export default function ProfileView({ bookings, loading, error, onOpenBooking, onLogin }: Props) {
+const ICONS = {
+  bookings: ["M5 5h14v15H5z", "M8 3v4M16 3v4M5 10h14"],
+  payments: ["M3 7h18v12H3z", "M3 11h18", "M7 15h3"],
+  help: ["M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z", "M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.4-1 .9-1 1.7", "M12 17h.01"],
+  crew: ["M9 11a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z", "M2.5 20c0-3.5 3-5.5 6.5-5.5s6.5 2 6.5 5.5", "M17 5.5a3 3 0 0 1 0 5.5", "M18 14.8c2.2.6 3.5 2.3 3.5 5.2"],
+  venue: ["M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z", "M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z"],
+  edit: ["M4 20h4L19 9l-4-4L4 16z", "M13.5 6.5l4 4"],
+  account: ["M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8z", "M4 21c0-4 4-6 8-6s8 2 8 6"],
+};
+
+export default function ProfileView({ profile, accountName, avatarUrl, bookings, loading, error, onOpen, onLogin }: Props) {
   const { configured, user, ready, signOut } = useAuth();
-  const newestFirst = [...bookings].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  const name = profile.name || accountName || "Your profile";
+  const contact = user?.email ?? user?.phone ?? (configured ? "Not signed in" : "Guest (demo): login isn't set up on this copy");
+  const pay = paymentsSummary(bookings);
+  const venue = selectedVenue(profile);
+  const needsLogin = configured && ready && !user;
+
+  const tiles: { target: ProfileTarget; title: string; sub: string; icon: string[] }[] = [
+    {
+      target: "my-bookings",
+      title: "My bookings",
+      sub: loading ? "Loading…" : bookings.length ? `${bookings.length} ${bookings.length === 1 ? "booking" : "bookings"}` : "View all bookings",
+      icon: ICONS.bookings,
+    },
+    {
+      target: "payments",
+      title: "Payments",
+      sub: pay.count ? `${pay.count} · ${formatINR(pay.total)} (simulated)` : "No payments yet",
+      icon: ICONS.payments,
+    },
+    { target: "crew", title: "Your crew", sub: profile.favourites.length ? `${profile.favourites.length} favourite${profile.favourites.length === 1 ? "" : "s"}` : "Add favourite workers", icon: ICONS.crew },
+    { target: "help", title: "Help & Support", sub: "Get quick help", icon: ICONS.help },
+  ];
+
+  const rows: { target: ProfileTarget; title: string; sub: string; icon: string[] }[] = [
+    { target: "venues", title: "Saved venues", sub: venue ? `${venue.label} selected` : "Add where workers should go", icon: ICONS.venue },
+    { target: "edit-profile", title: "Edit profile", sub: "Name, venue and contact details", icon: ICONS.edit },
+    { target: "account", title: "Manage account", sub: "Log out, policies and your data", icon: ICONS.account },
+  ];
 
   return (
     <div className="space-y-5">
       <section className="glass-dark p-5">
         <div className="flex items-center gap-4">
-          <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl font-black ring-1 ring-white/25">
-            {(user?.email?.[0] ?? "G").toUpperCase()}
-          </span>
-          <div className="min-w-0">
-            <h1 className="text-xl font-black">Employer profile</h1>
-            <p className="truncate text-sm text-sky-200">
-              {user?.email ?? (configured ? "Not signed in" : "Guest (demo): login isn't set up on this copy")}
-            </p>
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={avatarUrl} alt="" referrerPolicy="no-referrer" className="h-16 w-16 rounded-full object-cover ring-1 ring-white/25" />
+          ) : (
+            <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white/10 text-2xl font-black ring-1 ring-white/25">
+              {(name[0] ?? "S").toUpperCase()}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <h1 className="truncate text-xl font-black">{name}</h1>
+            <p className="truncate text-sm text-sky-200">{contact}</p>
+            {(profile.venueName || profile.venueType) && (
+              <p className="truncate text-sm text-sky-100">
+                {profile.venueName}
+                {profile.venueName && profile.venueType ? " · " : ""}
+                {profile.venueType ? VENUE_TYPE_LABEL[profile.venueType] : ""}
+              </p>
+            )}
           </div>
-        </div>
-        <div className="mt-4 flex gap-2">
-          {configured && ready && !user && (
-            <button type="button" onClick={onLogin} className="btn-primary px-4 py-2 text-sm">
-              Log in
-            </button>
-          )}
-          {user && (
-            <button type="button" onClick={() => signOut()} className="rounded-2xl border border-white/30 px-4 py-2 text-sm font-semibold text-white">
-              Sign out
+          {!needsLogin && (
+            <button type="button" onClick={() => onOpen("edit-profile")} aria-label="Edit profile" className="pill pill-dark">
+              Edit
             </button>
           )}
         </div>
+        {needsLogin && (
+          <button type="button" onClick={onLogin} className="btn-primary mt-4 w-full px-4 py-3">
+            Log in
+          </button>
+        )}
+        {!needsLogin && !profile.name && !profile.venueName && (
+          <button type="button" onClick={() => onOpen("edit-profile")} className="mt-4 w-full rounded-2xl border border-white/30 px-4 py-2 text-sm font-semibold">
+            Complete your profile
+          </button>
+        )}
       </section>
 
-      <section aria-label="My bookings" className="space-y-3">
-        <h2 className="text-xl font-black">My bookings</h2>
-
-        {configured && ready && !user ? (
-          <div className="glass space-y-3 p-5 text-sm">
-            <p>Log in to see your bookings and track your workers.</p>
-            <button type="button" onClick={onLogin} className="btn-primary px-4 py-2">
-              Log in
-            </button>
-          </div>
-        ) : loading ? (
-          <p className="muted text-sm">Loading your bookings…</p>
-        ) : newestFirst.length === 0 ? (
-          <div className="glass p-5 text-sm">
-            <p className="font-semibold">No bookings yet</p>
-            <p className="muted">When you book workers, they will appear here with live-style tracking.</p>
-          </div>
-        ) : (
-          <ul className="space-y-3">
-            {newestFirst.map((b) => (
-              <li key={b.reference}>
-                <button type="button" onClick={() => onOpenBooking(b.reference)} className="glass w-full p-4 text-left">
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="font-mono text-lg font-bold">{b.reference}</div>
-                      <div className="muted text-xs">{createdLabel(b.createdAt)}</div>
-                    </div>
-                    <div className="text-right">
-                      <div className="font-bold">{formatINR(b.bill.grandTotal)}</div>
-                      <div className="muted text-xs">incl. GST</div>
-                    </div>
-                  </div>
-                  <div className="mt-2 flex flex-wrap gap-1.5 text-xs">
-                    <span className="pill">{b.workers.length} {b.workers.length === 1 ? "worker" : "workers"}</span>
-                    {Array.from(new Set(b.workers.map((w) => STATUS_LABEL[w.status]))).map((s) => (
-                      <span key={s} className="pill text-blue-800">{s}</span>
-                    ))}
-                  </div>
+      {needsLogin ? (
+        <div className="glass space-y-3 p-5 text-sm">
+          <p className="font-semibold">Log in to see your bookings, payments and crew.</p>
+          <button type="button" onClick={onLogin} className="btn-primary px-4 py-2">
+            Log in
+          </button>
+        </div>
+      ) : (
+        <>
+          <ul className="grid grid-cols-2 gap-3" aria-label="Shortcuts">
+            {tiles.map((t) => (
+              <li key={t.target}>
+                <button type="button" onClick={() => onOpen(t.target)} className="glass flex h-full w-full flex-col gap-2 p-4 text-left">
+                  <span className="glass-dark flex h-11 w-11 items-center justify-center rounded-2xl">
+                    <Icon d={t.icon} />
+                  </span>
+                  <span className="font-bold">{t.title}</span>
+                  <span className="muted text-xs">{t.sub}</span>
                 </button>
               </li>
             ))}
           </ul>
-        )}
-        {error && <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">{error}</p>}
-      </section>
+
+          <section aria-label="Manage account">
+            <h2 className="muted mb-2 text-sm font-semibold">Manage account</h2>
+            <ul className="glass divide-y divide-slate-200/70 overflow-hidden">
+              {rows.map((r) => (
+                <li key={r.target}>
+                  <button type="button" onClick={() => onOpen(r.target)} className="flex w-full items-center gap-3 px-4 py-4 text-left">
+                    <span className="text-blue-700">
+                      <Icon d={r.icon} />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block font-semibold">{r.title}</span>
+                      <span className="muted block truncate text-xs">{r.sub}</span>
+                    </span>
+                    <span aria-hidden className="muted">›</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          {user && (
+            <button type="button" onClick={() => signOut()} className="btn-ghost w-full px-4 py-3 text-red-700">
+              Log out
+            </button>
+          )}
+        </>
+      )}
+
+      {error && (
+        <p role="alert" className="rounded-xl bg-red-50 px-3 py-2 text-sm text-red-800">
+          {error}
+        </p>
+      )}
+      <p className="muted pb-2 text-center text-xs">Staffly prototype · version {APP_VERSION}</p>
     </div>
   );
 }

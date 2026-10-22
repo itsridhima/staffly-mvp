@@ -1,6 +1,7 @@
 "use client";
 
 import { billBreakdown, formatINR, headcount } from "@/lib/pricing";
+import type { SavedVenue } from "@/lib/profile";
 import { roleInfo } from "@/lib/prototypeData";
 import { formatDateLong, formatTimeRange } from "@/lib/time";
 import type { BookingLine } from "@/lib/types";
@@ -11,6 +12,9 @@ import RoleIcon from "./RoleIcon";
 interface Props {
   lines: BookingLine[];
   loginNote: string | null;
+  /** The venue currently selected in Profile → Saved venues */
+  venue: SavedVenue | null;
+  onChangeVenue: () => void;
   onRemove: (id: string) => void;
   onAddAnother: () => void;
   onContinue: () => void;
@@ -18,7 +22,7 @@ interface Props {
 }
 
 /** Review booking: every role keeps its own date, shift length, timing and price. */
-export default function CartView({ lines, loginNote, onRemove, onAddAnother, onContinue, onDemoTake }: Props) {
+export default function CartView({ lines, loginNote, venue, onChangeVenue, onRemove, onAddAnother, onContinue, onDemoTake }: Props) {
   const bill = billBreakdown(lines);
 
   if (lines.length === 0) {
@@ -72,6 +76,29 @@ export default function CartView({ lines, loginNote, onRemove, onAddAnother, onC
           </li>
         ))}
       </ul>
+
+      <section className="glass flex items-center gap-3 p-4" aria-label="Shift location">
+        <span className="glass-dark flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl" aria-hidden>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+            <path d="M12 21s7-6 7-11a7 7 0 1 0-14 0c0 5 7 11 7 11z" />
+            <path d="M12 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5z" />
+          </svg>
+        </span>
+        <div className="min-w-0 flex-1 text-sm">
+          <div className="muted text-xs">Shift location</div>
+          {venue ? (
+            <>
+              <div className="font-bold">{venue.label}</div>
+              <div className="muted truncate">{venue.address}</div>
+            </>
+          ) : (
+            <div className="font-semibold">No venue added. Workers won&apos;t know where to go.</div>
+          )}
+        </div>
+        <button type="button" onClick={onChangeVenue} className="btn-ghost shrink-0 px-3 py-2 text-sm">
+          {venue ? "Change" : "Add venue"}
+        </button>
+      </section>
 
       <BillPanel lines={lines} dark title="Summary" />
       <p className="muted text-xs">GST is added on the payment page.</p>
