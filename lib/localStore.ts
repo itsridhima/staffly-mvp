@@ -23,3 +23,6 @@ export const KEYS = {
   demoLedger: "staffly-demo-ledger",
   notificationsSeen: "staffly-notifications-seen",
 } as const;
+
+/** Bookings that couldn't be saved to Supabase yet (kept on this device so they aren't lost). */
+export const pendingKey = (userId: string) => `staffly-pending-bookings-${userId}`;

@@ -51,7 +51,8 @@ All three are covered by automated logic tests (`npm test`) and were also clicke
 - **Demo rule:** shifts starting at 2:00 PM always show as "Already booked (demo)" so there is always one unavailable slot (`DEMO_BLOCKED_START` in `lib/prototypeData.ts`).
 - **Replacement needs a free worker:** the demo pool is small, so a replacement may not exist for some shifts; tracking then says so instead of inventing one.
 - **Tracking is simulated:** the "Demo controls" buttons stand in for the real confirmation call, the worker's reply and the shift itself.
-- **Login:** Google and email code (one-time code or magic link). **Mobile-number OTP is not included** because Supabase needs a paid SMS provider for it. Supabase's built-in email sender allows only a few emails per hour, which is fine for a demo but not for real use.
+- **Login:** Google, mobile number (SMS OTP) and email (one-time code or magic link) through Supabase. The login page asks Supabase which methods are switched on and only offers those, so nobody is sent to an error page. Real SMS needs an SMS provider (Twilio, MessageBird, Vonage or TextLocal; in India, DLT registration too), which is paid. For demos, Supabase's "test phone numbers and OTPs" setting lets chosen numbers log in with a fixed code and no SMS. Supabase's built-in email sender allows only a few emails per hour, fine for a demo but not for real use.
+- **Saved bookings need the Supabase table.** If the `bookings` table hasn't been created, the app says so and keeps new bookings on this device, then syncs them once the table exists.
 - **If Supabase isn't set up:** login is unavailable; the app falls back to a guest mode that saves bookings in this browser only.
 - **Availability across devices:** the worker pool is fictional, so availability is rebuilt from the signed-in user's own saved bookings, not shared between different users.
 - **Assistant:** with no key, a rejected key, the free-tier limit, our rate limit (30 questions per 10 minutes per visitor, best-effort), a timeout or an outage, the chat falls back to scripted answers labelled "Quick answer". It does not know cancellation/refund rules, worker verification, cities served, support contacts or other fees, because none were specified, and it says so.
@@ -80,8 +81,10 @@ Get a free key at https://aistudio.google.com/apikey, copy `.env.example` to `.e
 3. Project Settings → API: copy the **Project URL** and the **anon / publishable** key into `.env.local` as `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` (these two are public by design). **Never** use the `service_role` key in this app.
 4. Authentication → URL Configuration: set the Site URL and add Redirect URLs for `http://localhost:3000/**` and your Vercel domain.
 5. Email: for a 6-digit code, edit Authentication → Email Templates → Magic Link to include `{{ .Token }}`.
-6. Google: create an OAuth client (Web application) in Google Cloud, add Supabase's callback URL as an authorized redirect URI, then paste the Client ID and secret into Authentication → Providers → Google.
-7. Restart `npm run dev`. On Vercel, add the same variables under Environment Variables and redeploy.
+6. Google: create an OAuth client (Web application) in Google Cloud, add `https://<your-project-ref>.supabase.co/auth/v1/callback` as an authorized redirect URI (and your site URLs as authorized JavaScript origins), then paste the Client ID and secret into Authentication → Sign In / Providers → Google and switch it on.
+7. Mobile number: Authentication → Sign In / Providers → Phone → switch on. For a real SMS provider, pick one and paste its credentials. For a free demo, add a test number and code under "Test Phone Numbers and OTPs" (for example `919999999999=123456`) and log in with that number.
+8. Restart `npm run dev`. On Vercel, add the same two `NEXT_PUBLIC_` variables under Environment Variables and **redeploy** (changes only apply to new deployments).
+9. Keep the `service_role` key out of this app and out of Vercel. The app never needs it.
 
 ## Project layout
 - `app/page.tsx` – the single page and its view flow (home → role → booking → payment → confirmation, profile, tracking)
