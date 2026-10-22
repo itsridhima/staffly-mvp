@@ -6,6 +6,8 @@ import type { Order, ShiftLength } from "@/lib/types";
 interface Msg {
   role: "user" | "assistant";
   content: string;
+  /** "faq" = scripted answer (AI off or unavailable) */
+  source?: "ai" | "faq";
 }
 
 interface Props {
@@ -14,14 +16,6 @@ interface Props {
   date: string;
   order: Order;
 }
-
-const ERRORS: Record<string, string> = {
-  not_configured:
-    "The assistant isn't switched on yet: the Anthropic API key hasn't been added to .env.local on this computer.",
-  rate_limited: "You've asked a lot of questions in a short time. Please wait a few minutes and try again.",
-  busy: "The assistant is busy right now. Please try again in a moment.",
-  bad_key: "The assistant's API key was rejected. Please check the key in .env.local.",
-};
 
 const SUGGESTIONS = ["How does booking work?", "What does each role cost?", "Are the payments real?"];
 
@@ -49,12 +43,9 @@ export default function AssistantChat({ step, length, date, order }: Props) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, context: { step, length, date, order } }),
       });
-      const data = (await res.json().catch(() => ({}))) as { reply?: string; error?: string };
-      const reply =
-        res.ok && data.reply
-          ? data.reply
-          : (data.error && ERRORS[data.error]) || "Sorry, something went wrong. Please try again.";
-      setMessages([...next, { role: "assistant", content: reply }]);
+      const data = (await res.json().catch(() => ({}))) as { reply?: string; source?: "ai" | "faq" };
+      const reply = res.ok && data.reply ? data.reply : "Sorry, something went wrong. Please try again.";
+      setMessages([...next, { role: "assistant", content: reply, source: res.ok ? data.source : undefined }]);
     } catch {
       setMessages([...next, { role: "assistant", content: "I couldn't reach the assistant. Check your connection." }]);
     } finally {
@@ -115,6 +106,7 @@ export default function AssistantChat({ step, length, date, order }: Props) {
             }`}
           >
             {m.content}
+            {m.source === "faq" && <div className="mt-1 text-xs text-stone-500">Quick answer (AI helper not available)</div>}
           </div>
         ))}
         {busy && <div className="w-fit rounded-2xl bg-stone-100 px-3 py-2 text-stone-500">Thinking…</div>}
