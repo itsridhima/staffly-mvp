@@ -443,7 +443,7 @@ export default function Home() {
 
         {view === "login" && (
           <LoginScreen
-            reason={loginPurpose === "checkout" ? "Log in to continue to payment. Your booking is saved." : "Log in to save your venues, bookings and crew."}
+            reason={loginPurpose === "checkout" ? "Continue to payment. Your booking is saved." : "Save your venues, bookings and crew."}
             onCancel={goBack}
           />
         )}

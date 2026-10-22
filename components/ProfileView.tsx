@@ -62,6 +62,26 @@ export default function ProfileView({ profile, accountName, avatarUrl, bookings,
     { target: "account", title: "Manage account", sub: "Log out, policies and your data", icon: ICONS.account },
   ];
 
+  if (needsLogin) {
+    return (
+      <div className="space-y-5">
+        <section className="glass-dark space-y-4 p-6 text-center">
+          <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/25">
+            <Icon d={ICONS.account} />
+          </span>
+          <div>
+            <h2 className="text-xl font-black">Welcome to Staffly</h2>
+            <p className="mt-1 text-sm text-sky-100">Book pre-onboarded waiters, kitchen helpers, cleaners and more for 5 or 8 hour shifts, up to 14 days ahead. If a worker can&apos;t come, we arrange a replacement.</p>
+          </div>
+          <button type="button" onClick={onLogin} className="btn-primary w-full px-4 py-3">
+            Log in or sign up
+          </button>
+        </section>
+        <p className="muted pb-2 text-center text-xs">Staffly · version {APP_VERSION}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <section className="glass-dark p-5">

@@ -49,7 +49,7 @@ export const TERMS: LegalDoc = {
     {
       heading: "3. Your account",
       bullets: [
-        "You log in with Google, your mobile number (one-time code) or your email.",
+        "You log in or sign up with Google or your email (one-time code).",
         "Keep your login private. You are responsible for what happens under your account.",
         "Give accurate details in your profile and for your venue. Keep them up to date.",
       ],
@@ -153,7 +153,7 @@ export const PRIVACY: LegalDoc = {
     {
       heading: "1. Information we collect",
       bullets: [
-        "Account details: your email address or mobile number and, if you use Google to log in, the name and photo on your Google account.",
+        "Account details: your email address and, if you use Google to log in, the name and photo on your Google account.",
         "Profile details you add: your name, venue name and type, a contact number, saved venue addresses and favourite workers.",
         "Booking details: the roles, shifts, workers assigned, venue, totals, tracking updates, and any rating or note you give a worker.",
         "Chat messages: what you type to the Staffly assistant, plus a short summary of the booking you are looking at so it can answer accurately.",
@@ -176,7 +176,6 @@ export const PRIVACY: LegalDoc = {
         "Supabase: login and the storage of your profile and bookings.",
         "Vercel: hosting the app.",
         "Google: Google login, and the Gemini service that writes the assistant's replies. The messages you send to the assistant are shared with Google for that purpose.",
-        "An SMS provider: sends the one-time code if you log in with your mobile number.",
       ],
     },
     {

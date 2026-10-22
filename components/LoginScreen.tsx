@@ -1,54 +1,26 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { formatIndianPhone, normalizeIndianPhone } from "@/lib/phone";
+import { useState } from "react";
 import { useAuth } from "./AuthProvider";
 
 interface Props {
-  /** Why we're asking, e.g. "Log in to continue to payment." */
+  /** Why we're asking, e.g. "Continue to payment. Your booking is saved." */
   reason: string;
   onCancel: () => void;
 }
 
-type Tab = "phone" | "email";
-
 const EMAIL_OK = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const RESEND_SECONDS = 30;
 
+/** One screen for both logging in and signing up: Google, or an email code. New emails get an account automatically. */
 export default function LoginScreen({ reason, onCancel }: Props) {
-  const { configured, methods, signInWithGoogle, sendEmailCode, verifyEmailCode, sendPhoneCode, verifyPhoneCode } = useAuth();
+  const { configured, methods, signInWithGoogle, sendEmailCode, verifyEmailCode } = useAuth();
 
-  // Open on a method that is actually switched on. Until we know, start with phone.
-  const [tab, setTab] = useState<Tab>("phone");
-  const [chosen, setChosen] = useState(false);
-  useEffect(() => {
-    if (!methods || chosen) return;
-    setTab(methods.phone ? "phone" : "email");
-  }, [methods, chosen]);
-
-  const [phoneInput, setPhoneInput] = useState("");
   const [email, setEmail] = useState("");
   const [code, setCode] = useState("");
-  const [sentTo, setSentTo] = useState<string | null>(null); // phone (E.164) or email the code went to
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const t = setTimeout(() => setCooldown((c) => c - 1), 1000);
-    return () => clearTimeout(t);
-  }, [cooldown]);
-
-  function resetFlow(next: Tab) {
-    setTab(next);
-    setChosen(true);
-    setSentTo(null);
-    setCode("");
-    setMessage(null);
-    setError(null);
-  }
 
   async function run(task: () => Promise<string | null>, onOk?: () => void) {
     setBusy(true);
@@ -58,19 +30,6 @@ export default function LoginScreen({ reason, onCancel }: Props) {
     setBusy(false);
     if (err) setError(err);
     else onOk?.();
-  }
-
-  function sendPhone() {
-    const phone = normalizeIndianPhone(phoneInput);
-    if (!phone) {
-      setError("Enter a valid 10-digit Indian mobile number.");
-      return;
-    }
-    run(() => sendPhoneCode(phone), () => {
-      setSentTo(phone);
-      setCooldown(RESEND_SECONDS);
-      setMessage(`We sent a 6-digit code by SMS to ${formatIndianPhone(phone)}.`);
-    });
   }
 
   if (!configured) {
@@ -86,28 +45,26 @@ export default function LoginScreen({ reason, onCancel }: Props) {
   }
 
   const googleOff = methods !== null && !methods.google;
-  const phoneOff = methods !== null && !methods.phone;
   const emailOff = methods !== null && !methods.email;
-  const nothingOn = googleOff && phoneOff && emailOff;
 
   return (
     <section className="space-y-4">
       <div className="glass-dark p-5">
-        <h2 className="text-2xl font-black">Log in to Staffly</h2>
+        <h2 className="text-2xl font-black">Welcome to Staffly</h2>
         <p className="mt-1 text-sm text-sky-100">{reason}</p>
       </div>
 
       <div className="glass space-y-4 p-5">
-        {nothingOn && (
+        {googleOff && emailOff && (
           <p role="alert" className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900">
             Login isn&apos;t available right now. Please try again in a little while.
           </p>
         )}
 
-        <div>
+        {!googleOff && (
           <button
             type="button"
-            disabled={busy || googleOff}
+            disabled={busy}
             onClick={() => run(signInWithGoogle)}
             className="btn-ghost flex w-full items-center justify-center gap-3 px-4 py-3 disabled:opacity-60"
           >
@@ -119,116 +76,17 @@ export default function LoginScreen({ reason, onCancel }: Props) {
             </svg>
             Continue with Google
           </button>
-          {googleOff && <p className="muted mt-1 text-center text-xs">Google sign-in isn&apos;t switched on yet.</p>}
-        </div>
-
-        <div className="muted flex items-center gap-3 text-xs" aria-hidden>
-          <span className="h-px flex-1 bg-slate-300" />
-          or
-          <span className="h-px flex-1 bg-slate-300" />
-        </div>
-
-        <div role="tablist" aria-label="Login method" className="neu-inset grid grid-cols-2 gap-1 p-1">
-          {(["phone", "email"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              onClick={() => resetFlow(t)}
-              className={`rounded-xl px-3 py-2 text-sm font-semibold ${tab === t ? "glass-dark" : "muted"}`}
-            >
-              {t === "phone" ? "Mobile number" : "Email"}
-            </button>
-          ))}
-        </div>
-
-        {tab === "phone" && phoneOff && (
-          <p className="rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">
-            Mobile-number login isn&apos;t switched on yet. Please use Google or email.
-          </p>
-        )}
-        {tab === "email" && emailOff && (
-          <p className="rounded-xl bg-sky-50 px-3 py-2 text-sm text-sky-900">Email login isn&apos;t switched on yet.</p>
         )}
 
-        {tab === "phone" && !phoneOff &&
-          (sentTo === null ? (
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                sendPhone();
-              }}
-            >
-              <label className="block text-sm font-semibold" htmlFor="login-phone">
-                Mobile number
-              </label>
-              <div className="neu-inset flex items-center gap-2 px-3">
-                <span className="font-semibold text-slate-600">+91</span>
-                <input
-                  id="login-phone"
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel-national"
-                  value={phoneInput}
-                  onChange={(e) => setPhoneInput(e.target.value)}
-                  placeholder="98765 43210"
-                  className="w-full bg-transparent py-3 outline-none"
-                />
-              </div>
-              <button type="submit" disabled={busy || !phoneInput.trim()} className="btn-primary w-full px-4 py-3">
-                {busy ? "Sending…" : "Send OTP"}
-              </button>
-            </form>
-          ) : (
-            <form
-              className="space-y-3"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!/^\d{6}$/.test(code.trim())) {
-                  setError("Enter the 6-digit code from the SMS.");
-                  return;
-                }
-                run(() => verifyPhoneCode(sentTo, code));
-              }}
-            >
-              <label className="block text-sm font-semibold" htmlFor="login-otp">
-                6-digit OTP
-              </label>
-              <input
-                id="login-otp"
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))}
-                maxLength={6}
-                placeholder="123456"
-                className="neu-inset w-full px-3 py-3 tracking-widest"
-              />
-              <button type="submit" disabled={busy || code.length !== 6} className="btn-primary w-full px-4 py-3">
-                {busy ? "Checking…" : "Verify and log in"}
-              </button>
-              <div className="flex items-center justify-between text-sm">
-                <button type="button" onClick={() => resetFlow("phone")} className="font-semibold text-blue-700 underline">
-                  Change number
-                </button>
-                <button
-                  type="button"
-                  disabled={busy || cooldown > 0}
-                  onClick={() => run(() => sendPhoneCode(sentTo), () => {
-                    setCooldown(RESEND_SECONDS);
-                    setMessage("We sent a new code.");
-                  })}
-                  className="font-semibold text-blue-700 underline disabled:text-slate-400 disabled:no-underline"
-                >
-                  {cooldown > 0 ? `Resend in ${cooldown}s` : "Resend OTP"}
-                </button>
-              </div>
-            </form>
-          ))}
+        {!googleOff && !emailOff && (
+          <div className="muted flex items-center gap-3 text-xs" aria-hidden>
+            <span className="h-px flex-1 bg-slate-300" />
+            or
+            <span className="h-px flex-1 bg-slate-300" />
+          </div>
+        )}
 
-        {tab === "email" && !emailOff &&
+        {!emailOff &&
           (sentTo === null ? (
             <form
               className="space-y-3"
@@ -259,6 +117,7 @@ export default function LoginScreen({ reason, onCancel }: Props) {
               <button type="submit" disabled={busy || !email} className="btn-primary w-full px-4 py-3">
                 {busy ? "Sending…" : "Send login code"}
               </button>
+              <p className="muted text-center text-xs">New here? We&apos;ll create your account automatically.</p>
             </form>
           ) : (
             <form
@@ -286,9 +145,18 @@ export default function LoginScreen({ reason, onCancel }: Props) {
                 className="neu-inset w-full px-3 py-3 tracking-widest"
               />
               <button type="submit" disabled={busy || code.length < 6} className="btn-primary w-full px-4 py-3">
-                {busy ? "Checking…" : "Verify and log in"}
+                {busy ? "Checking…" : "Verify and continue"}
               </button>
-              <button type="button" onClick={() => resetFlow("email")} className="w-full text-sm font-semibold text-blue-700 underline">
+              <button
+                type="button"
+                onClick={() => {
+                  setSentTo(null);
+                  setCode("");
+                  setMessage(null);
+                  setError(null);
+                }}
+                className="w-full text-sm font-semibold text-blue-700 underline"
+              >
                 Use a different email or resend
               </button>
             </form>
@@ -305,10 +173,6 @@ export default function LoginScreen({ reason, onCancel }: Props) {
           </p>
         )}
       </div>
-
-      <button type="button" onClick={onCancel} className="btn-ghost w-full px-4 py-3">
-        Back to my booking
-      </button>
     </section>
   );
 }

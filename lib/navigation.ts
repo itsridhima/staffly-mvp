@@ -103,7 +103,7 @@ export const VIEW_TITLE: Record<View, string> = {
   home: "Staffly",
   role: "Role",
   cart: "Review booking",
-  login: "Log in",
+  login: "Log in or sign up",
   payment: "Payment",
   bank: "Confirm payment",
   taken: "Slot unavailable",

@@ -76,7 +76,7 @@ export const HELP_ITEMS: HelpItem[] = [
     id: "login",
     topic: "account",
     q: "How do I log in?",
-    a: "You log in when you press Continue on your booking, or from Profile. Depending on what's switched on, you can use Google, your mobile number (OTP) or your email.",
+    a: "You log in when you press Continue on your booking, or from Profile. You can use Google or your email. If you're new, an account is created for you automatically.",
   },
   {
     id: "data",
